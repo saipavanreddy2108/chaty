@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: chaty
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run dev
+    plan: free

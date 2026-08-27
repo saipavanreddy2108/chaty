@@ -1,0 +1,24 @@
+{
+  "name": "chaty",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "client": "vite",
+    "public": "npx localtunnel --port 3001",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "mongodb": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest",
+    "ws": "latest"
+  },
+  "devDependencies": {
+    "localtunnel": "^2.0.2"
+  }
+}

@@ -1,0 +1,101 @@
+import { createServer } from 'node:http'
+import { existsSync, readFileSync } from 'node:fs'
+import { extname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { WebSocketServer } from 'ws'
+import { authenticateUsername, createUsernameAccount, createSession, findUserBySession, getMessagesForUser, saveMessage, setupDatabase } from './db.js'
+
+const clients = new Map()
+const colors = ['coral', 'blue', 'gold', 'lavender', 'mint']
+const root = fileURLToPath(new URL('.', import.meta.url))
+const contentTypes = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' }
+
+function sendJson(response, status, body) {
+  response.writeHead(status, { 'Content-Type': 'application/json' })
+  response.end(JSON.stringify(body))
+}
+
+async function readJson(request) {
+  let body = ''
+  for await (const chunk of request) body += chunk
+  return JSON.parse(body)
+}
+
+const httpServer = createServer((request, response) => {
+  if (request.url === '/health') {
+    response.writeHead(200, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ service: 'chaty', connected: clients.size }))
+    return
+  }
+  if (request.method === 'POST' && ['/api/register', '/api/login'].includes(request.url)) {
+    readJson(request).then(async (data) => {
+      const username = typeof data.username === 'string' ? data.username.trim().toLowerCase().slice(0, 30) : ''
+      const password = typeof data.password === 'string' ? data.password : ''
+      if (!username || !password) return sendJson(response, 400, { error: 'Please complete all required fields.' })
+      if (request.url === '/api/register' && password.length < 8) return sendJson(response, 400, { error: 'Password must be at least 8 characters.' })
+      try {
+        const user = request.url === '/api/register'
+          ? await createUsernameAccount(username, password, colors[Math.floor(Math.random() * colors.length)])
+          : await authenticateUsername(username, password)
+        if (!user) return sendJson(response, 401, { error: 'Email or password is incorrect.' })
+        return sendJson(response, 200, { user, token: await createSession(user.id) })
+      } catch (error) {
+        if (error.code === 11000 || error.message === 'Account already exists') return sendJson(response, 409, { error: 'That username is already taken. Choose another one or sign in.' })
+        console.error('Authentication storage error:', error.message)
+        return sendJson(response, 500, { error: error.message || 'Unable to create your account right now.' })
+      }
+    }).catch(() => sendJson(response, 400, { error: 'Invalid request.' }))
+    return
+  }
+  const requestedPath = request.url === '/' ? '/index.html' : request.url.split('?')[0]
+  const filePath = join(root, 'dist', requestedPath)
+  const fallbackPath = join(root, 'dist', 'index.html')
+  const pathToServe = existsSync(filePath) ? filePath : fallbackPath
+  if (!existsSync(pathToServe)) {
+    response.writeHead(404)
+    response.end('Build the client with npm run build first.')
+    return
+  }
+  response.writeHead(200, { 'Content-Type': contentTypes[extname(pathToServe)] || 'application/octet-stream' })
+  response.end(readFileSync(pathToServe))
+})
+const websocketServer = new WebSocketServer({ server: httpServer, path: '/ws' })
+
+function broadcastUsers() {
+  const users = [...clients.values()].map(({ id, name, color }) => ({ id, name, color, online: true }))
+  for (const [socket, user] of clients) socket.send(JSON.stringify({ type: 'users', users, selfId: user.id }))
+}
+
+websocketServer.on('connection', (socket) => {
+  socket.on('message', async (raw) => {
+    let data
+    try { data = JSON.parse(raw.toString()) } catch { return }
+    if (data.type === 'identify' && typeof data.token === 'string') {
+      const user = await findUserBySession(data.token)
+      if (!user) return socket.send(JSON.stringify({ type: 'error', message: 'Your session has expired.' }))
+      clients.set(socket, user)
+      broadcastUsers()
+      const history = await getMessagesForUser(user.id)
+      if (history.length) socket.send(JSON.stringify({ type: 'history', messages: history.map((message) => ({ ...message, from: message.from === user.id ? 'me' : message.from })) }))
+    }
+    if (data.type === 'message' && typeof data.text === 'string') {
+      const sender = clients.get(socket)
+      if (!sender) return
+      const recipient = [...clients.entries()].find(([, user]) => user.id === data.to)
+      if (!recipient) return
+      const message = { id: `${Date.now()}-${Math.random()}`, from: sender.id, to: recipient[1].id, text: data.text.slice(0, 1000), time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }
+      await saveMessage(message)
+      socket.send(JSON.stringify({ type: 'message', message: { ...message, from: 'me' } }))
+      recipient[0].send(JSON.stringify({ type: 'message', message }))
+    }
+  })
+  socket.on('close', () => { clients.delete(socket); broadcastUsers() })
+})
+
+const port = Number(process.env.PORT || 3001)
+setupDatabase().then(() => {
+  httpServer.listen(port, '0.0.0.0', () => console.log(`Chaty is running on port ${port} (temporary memory mode)`))
+}).catch((error) => {
+  console.error('Database setup failed:', error.message)
+  process.exit(1)
+})
