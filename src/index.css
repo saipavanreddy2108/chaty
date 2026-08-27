@@ -57,5 +57,6 @@ button { border: 0; cursor: pointer; }
 .message-edit button { justify-self: end; margin-left: 8px; }
 .deleted-message { opacity: .65; font-style: italic; }
 .edited-label { font-size: 9px; opacity: .65; }
+.cancel-edit { padding: 0 5px; background: transparent; color: #b96c58; font-size: 9px; font-weight: 700; white-space: nowrap; }
 .send-button::after { display: none; }
 .send-button { width: 36px; height: 36px; min-height: 36px; border-radius: 10px; background: #e6876d; color: #fff; font-size: 20px; }
