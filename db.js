@@ -31,7 +31,7 @@ function validPassword(password, storedHash) {
 }
 
 function publicUser(user) {
-  return { id: user.id, name: user.name, color: user.color }
+  return { id: user.id, name: user.name || user.username, color: user.color }
 }
 
 export async function createAccount(name, email, password, color) {

@@ -33,7 +33,7 @@ function rows(name) {
 }
 
 function userFromRow(row) {
-  return { id: row[0], name: row[1], email: row[2], passwordHash: row[3], color: row[4], createdAt: row[5] }
+  return { id: row[0], name: row[1], username: row[1], email: row[2], passwordHash: row[3], color: row[4], createdAt: row[5] }
 }
 
 function publicUser(user) {
@@ -48,7 +48,7 @@ function createUser(data) {
 
 function authenticateUser(data) {
   const row = rows('Users').find((item) => item[1] === data.username || item[2] === data.email)
-  return json({ ok: true, user: row ? { ...userFromRow(row), username: row[1] } : null })
+  return json({ ok: true, user: row ? userFromRow(row) : null })
 }
 
 function createSession(data) {
