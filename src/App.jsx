@@ -34,6 +34,7 @@ function App() {
   const peerConnectionRef = useRef(null)
   const localStreamRef = useRef(null)
   const pendingOfferRef = useRef(null)
+  const pendingIceCandidatesRef = useRef([])
   const remoteAudioRef = useRef(null)
 
   const name = account?.user?.name || ''
@@ -63,8 +64,8 @@ function App() {
         pendingOfferRef.current = data.offer
         setCall({ status: 'incoming', peerId: data.from, peerName: data.fromName })
       }
-      if (data.type === 'call-answer') peerConnectionRef.current?.setRemoteDescription(data.answer)
-      if (data.type === 'call-ice' && data.candidate) peerConnectionRef.current?.addIceCandidate(data.candidate)
+      if (data.type === 'call-answer') handleCallAnswer(data.answer)
+      if (data.type === 'call-ice' && data.candidate) handleCallIce(data.candidate)
       if (data.type === 'call-accepted') setCall((current) => current ? { ...current, status: 'connected' } : current)
       if (data.type === 'call-rejected' || data.type === 'call-ended') endCall(false)
     }
@@ -151,6 +152,23 @@ function App() {
     return peerConnection
   }
 
+  async function handleCallAnswer(answer) {
+    const peerConnection = peerConnectionRef.current
+    if (!peerConnection) return
+    await peerConnection.setRemoteDescription(answer)
+    for (const candidate of pendingIceCandidatesRef.current) await peerConnection.addIceCandidate(candidate)
+    pendingIceCandidatesRef.current = []
+  }
+
+  async function handleCallIce(candidate) {
+    const peerConnection = peerConnectionRef.current
+    if (!peerConnection?.remoteDescription) {
+      pendingIceCandidatesRef.current.push(candidate)
+      return
+    }
+    await peerConnection.addIceCandidate(candidate)
+  }
+
   async function startAudioCall() {
     if (!selectedPerson || socket?.readyState !== WebSocket.OPEN || call) return
     try {
@@ -175,6 +193,8 @@ function App() {
       const peerConnection = createPeerConnection(call.peerId)
       stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
       await peerConnection.setRemoteDescription(pendingOfferRef.current)
+      for (const candidate of pendingIceCandidatesRef.current) await peerConnection.addIceCandidate(candidate)
+      pendingIceCandidatesRef.current = []
       const answer = await peerConnection.createAnswer()
       await peerConnection.setLocalDescription(answer)
       socket.send(JSON.stringify({ type: 'call-answer', to: call.peerId, answer }))
@@ -198,6 +218,7 @@ function App() {
     peerConnectionRef.current = null
     localStreamRef.current = null
     pendingOfferRef.current = null
+    pendingIceCandidatesRef.current = []
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
     setCall(null)
   }
