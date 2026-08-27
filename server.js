@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer } from 'ws'
-import { authenticateUsername, createUsernameAccount, createSession, findUserBySession, getAllUsers, getMessagesForUser, saveMessage, setupDatabase } from './db.js'
+import { authenticateUsername, createUsernameAccount, createSession, findUserBySession, getAllUsers, getMessagesForUser, saveMessage, setupDatabase, updateProfile } from './db.js'
 
 const clients = new Map()
 const colors = ['coral', 'blue', 'gold', 'lavender', 'mint']
@@ -43,6 +43,23 @@ const httpServer = createServer((request, response) => {
         if (error.code === 11000 || error.message === 'Account already exists') return sendJson(response, 409, { error: 'That username is already taken. Choose another one or sign in.' })
         console.error('Authentication storage error:', error.message)
         return sendJson(response, 500, { error: error.message || 'Unable to create your account right now.' })
+      }
+    }).catch(() => sendJson(response, 400, { error: 'Invalid request.' }))
+    return
+  }
+  if (request.method === 'POST' && request.url === '/api/profile') {
+    readJson(request).then(async (data) => {
+      const user = await findUserBySession(data.token)
+      const name = typeof data.name === 'string' ? data.name.trim().slice(0, 30) : ''
+      const currentPassword = typeof data.currentPassword === 'string' ? data.currentPassword : ''
+      const newPassword = typeof data.newPassword === 'string' ? data.newPassword : ''
+      if (!user || !name || !currentPassword) return sendJson(response, 400, { error: 'Name and current password are required.' })
+      if (newPassword && newPassword.length < 8) return sendJson(response, 400, { error: 'New password must be at least 8 characters.' })
+      try {
+        const updatedUser = await updateProfile(user.id, currentPassword, name, newPassword)
+        return sendJson(response, 200, { user: updatedUser })
+      } catch (error) {
+        return sendJson(response, 400, { error: error.message })
       }
     }).catch(() => sendJson(response, 400, { error: 'Invalid request.' }))
     return

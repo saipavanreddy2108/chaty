@@ -58,6 +58,14 @@ export async function authenticateUsername(username, password) {
   return publicUser(user)
 }
 
+export async function updateProfile(userId, currentPassword, name, newPassword) {
+  const { user } = await sheetsRequest('getUser', { userId })
+  if (!user || !validPassword(currentPassword, user.passwordHash)) throw new Error('Current password is incorrect.')
+  const passwordHash = newPassword ? hashPassword(newPassword) : user.passwordHash
+  await sheetsRequest('updateUser', { userId, name, passwordHash })
+  return publicUser({ ...user, name })
+}
+
 export async function getAllUsers() {
   const { users: savedUsers } = await sheetsRequest('getUsers')
   return savedUsers

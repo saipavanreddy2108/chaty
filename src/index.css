@@ -24,3 +24,14 @@ button { border: 0; cursor: pointer; }
 .chat-header { flex: 0 0 91px; }
 .chat-content { flex: 1 1 auto; min-height: 0; margin: 0 auto; }
 .message-form { flex: 0 0 48px; }
+.settings-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(31,39,48,.38); }
+.settings-card { width: min(430px, 100%); padding: 28px; background: #fff; box-shadow: 0 22px 60px rgba(31,39,48,.2); }
+.settings-card .details-heading { align-items: flex-start; }
+.settings-card h2 { margin-top: 3px; font: 700 25px 'Playfair Display', serif; }
+.settings-form { display: grid; gap: 8px; margin-top: 26px; }
+.settings-form label { color: #656b70; font-size: 11px; font-weight: 700; }
+.settings-form label span { color: #a5a9ac; font-weight: 400; }
+.settings-form input { height: 44px; padding: 0 12px; border: 1px solid #dedfe0; outline: none; background: #fff; font-size: 13px; }
+.settings-form input:focus { border-color: #df8a74; box-shadow: 0 0 0 3px #f6ddd5; }
+.settings-logout { width: 100%; margin-top: 12px; padding: 12px; background: transparent; color: #b55045; font-size: 12px; font-weight: 700; }
+.settings-success { margin: 3px 0; color: #4f9679; font-size: 11px; }

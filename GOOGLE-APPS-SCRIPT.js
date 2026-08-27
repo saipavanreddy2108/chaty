@@ -15,6 +15,8 @@ function doPost(event) {
     if (data.action === 'findSession') return findSession(data)
     if (data.action === 'getMessages') return getMessages(data)
     if (data.action === 'getUsers') return getUsers()
+    if (data.action === 'getUser') return getUser(data)
+    if (data.action === 'updateUser') return updateUser(data)
     if (data.action === 'saveMessage') return saveMessage(data)
     return json({ ok: false, error: 'Unknown action' })
   } catch (error) {
@@ -57,6 +59,23 @@ function getUsers() {
     return { id: row[0], name: row[1], color: row[4] }
   })
   return json({ ok: true, users: users })
+}
+
+function getUser(data) {
+  const row = rows('Users').find(function(item) {
+    return item[0] === data.userId
+  })
+  return json({ ok: true, user: row ? userFromRow(row) : null })
+}
+
+function updateUser(data) {
+  const currentSheet = sheet('Users')
+  const rowIndex = rows('Users').findIndex(function(row) {
+    return row[0] === data.userId
+  })
+  if (rowIndex < 0) throw new Error('User not found')
+  currentSheet.getRange(rowIndex + 2, 2, 1, 4).setValues([[data.name, data.email || '', data.passwordHash, data.color || 'coral']])
+  return json({ ok: true })
 }
 
 function createSession(data) {
