@@ -49,5 +49,13 @@ button { border: 0; cursor: pointer; }
 .rail-button { width: 70px; }
 .profile-button { width: 70px; }
 @media (max-width: 760px) { .rail-nav { gap: 8px; }.rail-button, .profile-button { width: 46px; }.rail-button::after { font-size: 7px; } }
+.message-controls { display: flex; justify-content: flex-end; gap: 8px; margin-top: 7px; }
+.message-controls button, .message-edit button { padding: 0; background: transparent; color: inherit; font-size: 9px; font-weight: 700; opacity: .75; }
+.message-controls button:hover, .message-edit button:hover { opacity: 1; text-decoration: underline; }
+.message-edit { display: grid; gap: 7px; min-width: 180px; }
+.message-edit input { width: 100%; padding: 7px 9px; border: 1px solid rgba(255,255,255,.6); outline: none; background: rgba(255,255,255,.16); color: inherit; font-size: 12px; }
+.message-edit button { justify-self: end; margin-left: 8px; }
+.deleted-message { opacity: .65; font-style: italic; }
+.edited-label { font-size: 9px; opacity: .65; }
 .send-button::after { display: none; }
 .send-button { width: 36px; height: 36px; min-height: 36px; border-radius: 10px; background: #e6876d; color: #fff; font-size: 20px; }

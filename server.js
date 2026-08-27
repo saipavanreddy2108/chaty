@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer } from 'ws'
-import { authenticateUsername, createUsernameAccount, createSession, findUserBySession, getAllUsers, getMessagesForUser, saveMessage, setupDatabase, updateProfile } from './db.js'
+import { authenticateUsername, createUsernameAccount, createSession, deleteMessage, editMessage, findUserBySession, getAllUsers, getMessagesForUser, saveMessage, setupDatabase, updateProfile } from './db.js'
 
 const clients = new Map()
 const colors = ['coral', 'blue', 'gold', 'lavender', 'mint']
@@ -107,6 +107,26 @@ websocketServer.on('connection', (socket) => {
       await saveMessage(message)
       socket.send(JSON.stringify({ type: 'message', message: { ...message, from: 'me' } }))
       if (recipient) recipient[0].send(JSON.stringify({ type: 'message', message }))
+    }
+    if (data.type === 'edit-message' && typeof data.messageId === 'string' && typeof data.text === 'string') {
+      const sender = clients.get(socket)
+      if (!sender || !data.text.trim()) return
+      await editMessage(data.messageId, sender.id, data.text.trim().slice(0, 1000))
+      const update = JSON.stringify({ type: 'message-edited', messageId: data.messageId, text: data.text.trim().slice(0, 1000) })
+      socket.send(update)
+      for (const [recipientSocket, user] of clients) {
+        if (user.id === data.to && recipientSocket.readyState === 1) recipientSocket.send(update)
+      }
+    }
+    if (data.type === 'delete-message' && typeof data.messageId === 'string') {
+      const sender = clients.get(socket)
+      if (!sender) return
+      await deleteMessage(data.messageId, sender.id)
+      const update = JSON.stringify({ type: 'message-deleted', messageId: data.messageId })
+      socket.send(update)
+      for (const [recipientSocket, user] of clients) {
+        if (user.id === data.to && recipientSocket.readyState === 1) recipientSocket.send(update)
+      }
     }
   })
   socket.on('close', () => { clients.delete(socket); broadcastUsers().catch(() => undefined) })

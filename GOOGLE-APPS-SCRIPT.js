@@ -18,6 +18,8 @@ function doPost(event) {
     if (data.action === 'getUser') return getUser(data)
     if (data.action === 'updateUser') return updateUser(data)
     if (data.action === 'saveMessage') return saveMessage(data)
+    if (data.action === 'editMessage') return editMessage(data)
+    if (data.action === 'deleteMessage') return deleteMessage(data)
     return json({ ok: false, error: 'Unknown action' })
   } catch (error) {
     return json({ ok: false, error: error.message })
@@ -100,7 +102,34 @@ function getMessages(data) {
 }
 
 function saveMessage(data) {
-  sheet('Messages').appendRow([data.id, data.from, data.to, data.text, data.time, new Date()])
+  sheet('Messages').appendRow([data.id, data.from, data.to, data.text, data.time, new Date(), ''])
+  return json({ ok: true })
+}
+
+function findMessageRow(messageId) {
+  return rows('Messages').findIndex(function(row) {
+    return row[0] === messageId
+  })
+}
+
+function editMessage(data) {
+  const currentSheet = sheet('Messages')
+  const rowIndex = findMessageRow(data.messageId)
+  if (rowIndex < 0) throw new Error('Message not found')
+  const row = rows('Messages')[rowIndex]
+  if (row[1] !== data.userId) throw new Error('You can only edit your own messages')
+  currentSheet.getRange(rowIndex + 2, 4).setValue(data.text)
+  return json({ ok: true })
+}
+
+function deleteMessage(data) {
+  const currentSheet = sheet('Messages')
+  const rowIndex = findMessageRow(data.messageId)
+  if (rowIndex < 0) throw new Error('Message not found')
+  const row = rows('Messages')[rowIndex]
+  if (row[1] !== data.userId) throw new Error('You can only delete your own messages')
+  currentSheet.getRange(rowIndex + 2, 4).setValue('Message deleted')
+  currentSheet.getRange(rowIndex + 2, 7).setValue(new Date())
   return json({ ok: true })
 }
 

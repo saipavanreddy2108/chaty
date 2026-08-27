@@ -92,3 +92,11 @@ export async function getMessagesForUser(userId) {
 export async function saveMessage(message) {
   await sheetsRequest('saveMessage', message)
 }
+
+export async function editMessage(messageId, userId, text) {
+  await sheetsRequest('editMessage', { messageId, userId, text })
+}
+
+export async function deleteMessage(messageId, userId) {
+  await sheetsRequest('deleteMessage', { messageId, userId })
+}
