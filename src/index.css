@@ -35,3 +35,13 @@ button { border: 0; cursor: pointer; }
 .settings-form input:focus { border-color: #df8a74; box-shadow: 0 0 0 3px #f6ddd5; }
 .settings-logout { width: 100%; margin-top: 12px; padding: 12px; background: transparent; color: #b55045; font-size: 12px; font-weight: 700; }
 .settings-success { margin: 3px 0; color: #4f9679; font-size: 11px; }
+.rail-button { height: auto; min-height: 46px; grid-template-rows: 25px auto; gap: 2px; padding: 5px 2px; }
+.rail-button::after, .chat-actions button::after, .form-icon::after, .send-button::after, .compose-button::after, .details-heading button::after { content: attr(aria-label); display: block; font-size: 8px; line-height: 1; font-weight: 600; letter-spacing: 0; white-space: nowrap; }
+.rail-button::after { color: #96a0aa; }
+.rail-button:hover::after, .rail-button.active::after { color: #fff; }
+.profile-button::after { color: #96a0aa; }
+.chat-actions button { height: auto; min-height: 38px; display: grid; place-items: center; gap: 2px; }
+.chat-actions button::after, .form-icon::after, .send-button::after { color: #858b91; }
+.form-icon, .send-button { height: auto; min-height: 32px; display: grid; place-items: center; gap: 2px; }
+.compose-button, .details-heading button { height: auto; min-height: 37px; display: grid; place-items: center; gap: 2px; }
+.compose-button::after, .details-heading button::after { color: #cc725a; }
