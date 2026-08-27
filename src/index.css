@@ -45,3 +45,7 @@ button { border: 0; cursor: pointer; }
 .form-icon, .send-button { height: auto; min-height: 32px; display: grid; place-items: center; gap: 2px; }
 .compose-button, .details-heading button { height: auto; min-height: 37px; display: grid; place-items: center; gap: 2px; }
 .compose-button::after, .details-heading button::after { color: #cc725a; }
+.rail-nav { gap: 18px; }
+.rail-button { width: 70px; }
+.profile-button { width: 70px; }
+@media (max-width: 760px) { .rail-nav { gap: 8px; }.rail-button, .profile-button { width: 46px; }.rail-button::after { font-size: 7px; } }
