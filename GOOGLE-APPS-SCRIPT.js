@@ -14,7 +14,7 @@ function doPost(event) {
     if (data.action === 'createSession') return createSession(data)
     if (data.action === 'findSession') return findSession(data)
     if (data.action === 'getMessages') return getMessages(data)
-    if (data.action === 'getUsers') return getUsers()
+    if (data.action === 'getUsers') return getUsers(data)
     if (data.action === 'getUser') return getUser(data)
     if (data.action === 'updateUser') return updateUser(data)
     if (data.action === 'saveMessage') return saveMessage(data)
@@ -56,8 +56,21 @@ function authenticateUser(data) {
   return json({ ok: true, user: row ? userFromRow(row) : null })
 }
 
-function getUsers() {
-  const users = rows('Users').map(function(row) {
+function getUsers(data) {
+  const usersRows = rows('Users')
+  const query = String(data.query || '').trim().toLowerCase()
+  const userId = String(data.userId || '')
+  let allowedIds = null
+  if (!query && userId) {
+    allowedIds = {}
+    rows('Messages').forEach(function(row) {
+      if (row[1] === userId) allowedIds[row[2]] = true
+      if (row[2] === userId) allowedIds[row[1]] = true
+    })
+  }
+  const users = usersRows.filter(function(row) {
+    return query ? String(row[1]).toLowerCase().includes(query) : allowedIds && allowedIds[row[0]]
+  }).map(function(row) {
     return { id: row[0], name: row[1], color: row[4] }
   })
   return json({ ok: true, users: users })

@@ -55,6 +55,10 @@ function App() {
     return () => connection.close()
   }, [account])
 
+  useEffect(() => {
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'search-users', query }))
+  }, [socket, query])
+
   const selectedPerson = people.find((person) => person.id === selectedId) || people[0]
   const filteredPeople = useMemo(() => people.filter((person) => person.name.toLowerCase().includes(query.toLowerCase())), [people, query])
   const visibleMessages = messages.filter((item) => selectedPerson && (item.from === selectedPerson.id || item.to === selectedPerson.id))

@@ -67,7 +67,12 @@ export async function updateProfile(userId, currentPassword, name, newPassword) 
 }
 
 export async function getAllUsers() {
-  const { users: savedUsers } = await sheetsRequest('getUsers')
+  const { users: savedUsers } = await sheetsRequest('getUsers', { userId: '', query: '' })
+  return savedUsers
+}
+
+export async function getUsersForUser(userId, query = '') {
+  const { users: savedUsers } = await sheetsRequest('getUsers', { userId, query })
   return savedUsers
 }
 

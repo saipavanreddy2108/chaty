@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer } from 'ws'
-import { authenticateUsername, createUsernameAccount, createSession, deleteMessage, editMessage, findUserBySession, getAllUsers, getMessagesForUser, saveMessage, setupDatabase, updateProfile } from './db.js'
+import { authenticateUsername, createUsernameAccount, createSession, deleteMessage, editMessage, findUserBySession, getMessagesForUser, getUsersForUser, saveMessage, setupDatabase, updateProfile } from './db.js'
 
 const clients = new Map()
 const colors = ['coral', 'blue', 'gold', 'lavender', 'mint']
@@ -80,8 +80,8 @@ const websocketServer = new WebSocketServer({ server: httpServer, path: '/ws' })
 
 async function broadcastUsers() {
   const onlineIds = new Set([...clients.values()].map((user) => user.id))
-  const registeredUsers = await getAllUsers()
   for (const [socket, user] of clients) {
+    const registeredUsers = await getUsersForUser(user.id)
     const users = registeredUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) }))
     socket.send(JSON.stringify({ type: 'users', users, selfId: user.id }))
   }
@@ -107,6 +107,13 @@ websocketServer.on('connection', (socket) => {
       await saveMessage(message)
       socket.send(JSON.stringify({ type: 'message', message: { ...message, from: 'me' } }))
       if (recipient) recipient[0].send(JSON.stringify({ type: 'message', message }))
+    }
+    if (data.type === 'search-users' && typeof data.query === 'string') {
+      const user = clients.get(socket)
+      if (!user) return
+      const onlineIds = new Set([...clients.values()].map((person) => person.id))
+      const foundUsers = await getUsersForUser(user.id, data.query.trim().slice(0, 50))
+      socket.send(JSON.stringify({ type: 'users', users: foundUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) })), selfId: user.id }))
     }
     if (data.type === 'edit-message' && typeof data.messageId === 'string' && typeof data.text === 'string') {
       const sender = clients.get(socket)
