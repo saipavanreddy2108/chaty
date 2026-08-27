@@ -86,11 +86,10 @@ websocketServer.on('connection', (socket) => {
       const sender = clients.get(socket)
       if (!sender) return
       const recipient = [...clients.entries()].find(([, user]) => user.id === data.to)
-      if (!recipient) return
-      const message = { id: `${Date.now()}-${Math.random()}`, from: sender.id, to: recipient[1].id, text: data.text.slice(0, 1000), time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }
+      const message = { id: `${Date.now()}-${Math.random()}`, from: sender.id, to: data.to, text: data.text.slice(0, 1000), time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }
       await saveMessage(message)
       socket.send(JSON.stringify({ type: 'message', message: { ...message, from: 'me' } }))
-      recipient[0].send(JSON.stringify({ type: 'message', message }))
+      if (recipient) recipient[0].send(JSON.stringify({ type: 'message', message }))
     }
   })
   socket.on('close', () => { clients.delete(socket); broadcastUsers().catch(() => undefined) })
