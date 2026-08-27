@@ -156,6 +156,13 @@ websocketServer.on('connection', (socket) => {
         if (user.id === data.to && recipientSocket.readyState === 1) recipientSocket.send(update)
       }
     }
+    if (['call-offer', 'call-answer', 'call-ice', 'call-accepted', 'call-rejected', 'call-ended'].includes(data.type) && typeof data.to === 'string') {
+      const sender = clients.get(socket)
+      const recipient = [...clients.entries()].find(([, user]) => user.id === data.to)
+      if (!sender || !recipient || recipient[0].readyState !== 1) return
+      const signal = { type: data.type, from: sender.id, fromName: sender.name, offer: data.offer, answer: data.answer, candidate: data.candidate }
+      recipient[0].send(JSON.stringify(signal))
+    }
   })
   socket.on('close', () => { clients.delete(socket); broadcastUsers().catch(() => undefined) })
 })

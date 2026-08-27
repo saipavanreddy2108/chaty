@@ -30,6 +30,11 @@ function App() {
   const [editingMessageId, setEditingMessageId] = useState(null)
   const [editingText, setEditingText] = useState('')
   const [messageRequests, setMessageRequests] = useState([])
+  const [call, setCall] = useState(null)
+  const peerConnectionRef = useRef(null)
+  const localStreamRef = useRef(null)
+  const pendingOfferRef = useRef(null)
+  const remoteAudioRef = useRef(null)
 
   const name = account?.user?.name || ''
 
@@ -54,6 +59,14 @@ function App() {
       if (data.type === 'message-requests') setMessageRequests(data.requests)
       if (data.type === 'message-request') setMessageRequests((current) => [...current.filter((item) => item.requestId !== data.request.requestId), data.request])
       if (data.type === 'request-updated') setMessageRequests((current) => current.filter((item) => item.requestId !== data.requestId))
+      if (data.type === 'call-offer') {
+        pendingOfferRef.current = data.offer
+        setCall({ status: 'incoming', peerId: data.from, peerName: data.fromName })
+      }
+      if (data.type === 'call-answer') peerConnectionRef.current?.setRemoteDescription(data.answer)
+      if (data.type === 'call-ice' && data.candidate) peerConnectionRef.current?.addIceCandidate(data.candidate)
+      if (data.type === 'call-accepted') setCall((current) => current ? { ...current, status: 'connected' } : current)
+      if (data.type === 'call-rejected' || data.type === 'call-ended') endCall(false)
     }
     setSocket(connection)
     return () => connection.close()
@@ -123,6 +136,72 @@ function App() {
     setMessage('')
   }
 
+  function createPeerConnection(peerId) {
+    const peerConnection = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate && socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'call-ice', to: peerId, candidate: event.candidate }))
+    }
+    peerConnection.ontrack = (event) => {
+      if (remoteAudioRef.current) remoteAudioRef.current.srcObject = event.streams[0]
+    }
+    peerConnection.onconnectionstatechange = () => {
+      if (['failed', 'disconnected', 'closed'].includes(peerConnection.connectionState)) endCall(false)
+    }
+    peerConnectionRef.current = peerConnection
+    return peerConnection
+  }
+
+  async function startAudioCall() {
+    if (!selectedPerson || socket?.readyState !== WebSocket.OPEN || call) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      localStreamRef.current = stream
+      const peerConnection = createPeerConnection(selectedPerson.id)
+      stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
+      const offer = await peerConnection.createOffer()
+      await peerConnection.setLocalDescription(offer)
+      socket.send(JSON.stringify({ type: 'call-offer', to: selectedPerson.id, fromName: name, offer }))
+      setCall({ status: 'calling', peerId: selectedPerson.id, peerName: selectedPerson.name })
+    } catch {
+      setCall({ status: 'error', peerId: selectedPerson.id, peerName: selectedPerson.name })
+    }
+  }
+
+  async function acceptAudioCall() {
+    if (!call?.peerId || !pendingOfferRef.current) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      localStreamRef.current = stream
+      const peerConnection = createPeerConnection(call.peerId)
+      stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
+      await peerConnection.setRemoteDescription(pendingOfferRef.current)
+      const answer = await peerConnection.createAnswer()
+      await peerConnection.setLocalDescription(answer)
+      socket.send(JSON.stringify({ type: 'call-answer', to: call.peerId, answer }))
+      socket.send(JSON.stringify({ type: 'call-accepted', to: call.peerId }))
+      pendingOfferRef.current = null
+      setCall({ ...call, status: 'connected' })
+    } catch {
+      endCall(true)
+    }
+  }
+
+  function rejectAudioCall() {
+    if (call?.peerId && socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'call-rejected', to: call.peerId }))
+    endCall(false)
+  }
+
+  function endCall(notify = true) {
+    if (notify && call?.peerId && socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'call-ended', to: call.peerId }))
+    peerConnectionRef.current?.close()
+    localStreamRef.current?.getTracks().forEach((track) => track.stop())
+    peerConnectionRef.current = null
+    localStreamRef.current = null
+    pendingOfferRef.current = null
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
+    setCall(null)
+  }
+
   function beginEdit(item) {
     setEditingMessageId(item.id)
     setEditingText(item.text)
@@ -167,7 +246,7 @@ function App() {
   return <main className="app-shell">
     <aside className="rail"><div className="brand-mark">c<span>·</span></div><nav className="rail-nav" aria-label="Primary navigation"><button className="rail-button active" aria-label="Messages" title="Messages">◒</button><button className="rail-button" aria-label="Explore" title="Explore">⌕</button><button className="rail-button" aria-label="Notifications" title="Notifications">♡</button><button className="rail-button" aria-label="Saved" title="Saved">▱</button></nav><button className="rail-button profile-button" aria-label="Open settings" title="Settings" onClick={openSettings}><div className="profile-dot">{name.slice(0, 2).toUpperCase()}</div></button></aside>
     <section className="inbox-panel"><header className="inbox-header"><div><p className="eyebrow">Messages</p><h1>Inbox <span className="count">{people.length}</span></h1></div><button className="compose-button" aria-label="Refresh contacts" onClick={() => socket?.send(JSON.stringify({ type: 'ping' }))}>↻</button></header><div className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search people" aria-label="Search people" /></div><div className="tabs" role="tablist"><button className={activeTab === 'Inbox' ? 'tab active-tab' : 'tab'} onClick={() => setActiveTab('Inbox')}>People</button><button className={activeTab === 'Requests' ? 'tab active-tab' : 'tab'} onClick={() => setActiveTab('Requests')}>Status <span className="request-count">{connected ? 'Live' : 'Offline'}</span></button></div><div className="conversation-list">{filteredPeople.map((person) => <button key={person.id} className={selectedId === person.id ? 'conversation selected' : 'conversation'} onClick={() => setSelectedId(person.id)}><Avatar person={person} small /><span className="conversation-copy"><strong>{person.name}</strong><span>{person.online ? 'Online now · Start a conversation' : 'Offline'}</span></span><span className="conversation-meta"><small>{person.online ? 'live' : ''}</small></span></button>)}{filteredPeople.length === 0 && <p className="empty-state">{people.length ? 'No people match your search.' : 'Open Chaty in another window to find people.'}</p>}</div><div className="inbox-footer"><span className="status-line"><i className={connected ? '' : 'offline'} /> {connected ? `Signed in as ${name}` : 'Connecting to Chaty...'}</span></div></section>
-    <section className="chat-panel"><header className="chat-header">{selectedPerson ? <><div className="chat-person"><Avatar person={selectedPerson} /><div><h2>{selectedPerson.name}</h2><p>{selectedPerson.online ? 'Active now' : 'Offline'}</p></div></div><div className="chat-actions"><button aria-label="Start audio call">⌁</button><button aria-label="Start video call">▣</button><button aria-label="More options">•••</button></div></> : <div className="chat-placeholder"><span>✦</span><p>Select a person to start chatting</p></div>}</header>{selectedPerson && <><div className="chat-content" ref={chatContentRef}><div className="profile-intro"><Avatar person={selectedPerson} /><h3>{selectedPerson.name}</h3><p>Live conversation with {selectedPerson.name}</p></div>{messageRequests.some((request) => request.from === selectedPerson.id && request.status === 'pending') && <div className="request-banner"><strong>Message request</strong><p>{selectedPerson.name} wants to start a conversation.</p><div><button type="button" onClick={() => respondToRequest(messageRequests.find((request) => request.from === selectedPerson.id).requestId, 'accepted')}>Accept</button><button type="button" onClick={() => respondToRequest(messageRequests.find((request) => request.from === selectedPerson.id).requestId, 'deleted')}>Delete</button></div></div>}<div className="date-divider"><span>{visibleMessages.length ? 'Messages' : 'New conversation'}</span></div><div className="message-stack">{visibleMessages.map((item) => <div key={item.id} className={`message-row ${item.from === 'me' ? 'mine' : ''}`}><div className={`message-bubble ${item.deleted ? 'deleted-message' : ''}`}>{item.text}{item.edited && <em className="edited-label"> edited</em>}{item.from === 'me' && !item.deleted && <span className="message-controls"><button type="button" onClick={() => beginEdit(item)}>Edit</button><button type="button" onClick={() => removeMessage(item)}>Delete</button></span>}<small>{item.time}</small></div></div>)}</div></div><form className="message-form" onSubmit={submitMessage}>{editingMessageId && <button type="button" className="cancel-edit" onClick={cancelEdit}>Cancel</button>}<button type="button" className="form-icon" aria-label="Add attachment">⊕</button><input ref={messageInputRef} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={editingMessageId ? 'Edit message' : `Message ${selectedPerson.name.split(' ')[0]}`} aria-label={editingMessageId ? 'Edit message' : 'Write a message'} /><button type="button" className="form-icon" aria-label="Add emoji">☺</button><button className="send-button" type="submit" aria-label={editingMessageId ? 'Save edited message' : 'Send message'}>↑</button></form></>}</section>
+    <section className="chat-panel"><header className="chat-header">{selectedPerson ? <><div className="chat-person"><Avatar person={selectedPerson} /><div><h2>{selectedPerson.name}</h2><p>{selectedPerson.online ? 'Active now' : 'Offline'}</p></div></div><div className="chat-actions"><button aria-label="Start audio call" onClick={startAudioCall}>⌁</button><button aria-label="More options">•••</button></div></> : <div className="chat-placeholder"><span>✦</span><p>Select a person to start chatting</p></div>}</header>{selectedPerson && <><div className="chat-content" ref={chatContentRef}><div className="profile-intro"><Avatar person={selectedPerson} /><h3>{selectedPerson.name}</h3><p>Live conversation with {selectedPerson.name}</p></div>{messageRequests.some((request) => request.from === selectedPerson.id && request.status === 'pending') && <div className="request-banner"><strong>Message request</strong><p>{selectedPerson.name} wants to start a conversation.</p><div><button type="button" onClick={() => respondToRequest(messageRequests.find((request) => request.from === selectedPerson.id).requestId, 'accepted')}>Accept</button><button type="button" onClick={() => respondToRequest(messageRequests.find((request) => request.from === selectedPerson.id).requestId, 'deleted')}>Delete</button></div></div>}<div className="date-divider"><span>{visibleMessages.length ? 'Messages' : 'New conversation'}</span></div><div className="message-stack">{visibleMessages.map((item) => <div key={item.id} className={`message-row ${item.from === 'me' ? 'mine' : ''}`}><div className={`message-bubble ${item.deleted ? 'deleted-message' : ''}`}>{item.text}{item.edited && <em className="edited-label"> edited</em>}{item.from === 'me' && !item.deleted && <span className="message-controls"><button type="button" onClick={() => beginEdit(item)}>Edit</button><button type="button" onClick={() => removeMessage(item)}>Delete</button></span>}<small>{item.time}</small></div></div>)}</div></div>{call && <div className={`call-panel call-${call.status}`}><strong>{call.status === 'incoming' ? `${call.peerName} is calling` : call.status === 'calling' ? `Calling ${call.peerName}...` : call.status === 'connected' ? `Audio call with ${call.peerName}` : 'Could not start audio call'}</strong>{call.status === 'incoming' && <><button type="button" onClick={acceptAudioCall}>Accept</button><button type="button" onClick={rejectAudioCall}>Decline</button></>}{call.status !== 'error' && call.status !== 'incoming' && <button type="button" onClick={() => endCall(true)}>Hang up</button>}</div>}<audio ref={remoteAudioRef} autoPlay /><form className="message-form" onSubmit={submitMessage}>{editingMessageId && <button type="button" className="cancel-edit" onClick={cancelEdit}>Cancel</button>}<button type="button" className="form-icon" aria-label="Add attachment">⊕</button><input ref={messageInputRef} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={editingMessageId ? 'Edit message' : `Message ${selectedPerson.name.split(' ')[0]}`} aria-label={editingMessageId ? 'Edit message' : 'Write a message'} /><button type="button" className="form-icon" aria-label="Add emoji">☺</button><button className="send-button" type="submit" aria-label={editingMessageId ? 'Save edited message' : 'Send message'}>↑</button></form></>}</section>
     <aside className="details-panel">{selectedPerson ? <><div className="details-heading"><p className="eyebrow">Details</p><button aria-label="Close details" onClick={() => setSelectedId(null)}>×</button></div><div className="detail-avatar"><Avatar person={selectedPerson} /></div><h2>{selectedPerson.name}</h2><p className="detail-handle">{selectedPerson.online ? 'Online now' : 'Currently offline'}</p><div className="detail-actions"><button><span>♧</span> Mute</button><button><span>⌁</span> Call</button><button><span>i</span> Info</button></div><div className="detail-section"><button className="detail-row"><span>Media, links & docs</span><b>›</b></button><button className="detail-row"><span>Privacy & support</span><b>›</b></button></div><div className="shared-note"><span>✦</span><div><strong>Live connection</strong><p>Messages are delivered instantly while you are both online.</p></div></div></> : <div className="details-empty"><span>✦</span><p>Your contact details will appear here.</p></div>}</aside>{settingsOpen && <div className="settings-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setSettingsOpen(false)}><section className="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title"><div className="details-heading"><div><p className="eyebrow">Account</p><h2 id="settings-title">Settings</h2></div><button aria-label="Close settings" onClick={() => setSettingsOpen(false)}>×</button></div><form className="settings-form" onSubmit={saveSettings}><label htmlFor="settings-name">Display name</label><input id="settings-name" required value={settingsForm.name} onChange={(event) => setSettingsForm({ ...settingsForm, name: event.target.value })} /><label htmlFor="current-password">Current password</label><input id="current-password" type="password" required value={settingsForm.currentPassword} onChange={(event) => setSettingsForm({ ...settingsForm, currentPassword: event.target.value })} /><label htmlFor="new-password">New password <span>(optional)</span></label><input id="new-password" type="password" value={settingsForm.newPassword} onChange={(event) => setSettingsForm({ ...settingsForm, newPassword: event.target.value })} placeholder="Leave blank to keep current password" />{settingsError && <p className="auth-error">{settingsError}</p>}{settingsSaved && <p className="settings-success">Settings saved.</p>}<button className="join-button">Save changes <span>→</span></button></form><button className="settings-logout" onClick={logout}>Sign out</button></section></div>}
   </main>
 }

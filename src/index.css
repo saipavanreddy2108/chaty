@@ -63,5 +63,12 @@ button { border: 0; cursor: pointer; }
 .request-banner p { margin: 5px 0 12px; color: #8c817d; font-size: 11px; }
 .request-banner button { margin-right: 14px; padding: 0; background: transparent; color: #bd6b57; font-size: 11px; font-weight: 700; }
 .request-banner button:hover { text-decoration: underline; }
+.call-panel { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 680px; width: calc(100% - 84px); margin: 0 auto 12px; padding: 12px 15px; border-radius: 10px; background: #e8f3ee; color: #477e69; font-size: 11px; }
+.call-panel strong { margin-right: auto; }
+.call-panel button { padding: 6px 10px; border-radius: 6px; background: #5aa486; color: #fff; font-size: 10px; font-weight: 700; }
+.call-panel button:hover { background: #397d62; }
+.call-incoming { background: #fff3e9; color: #a96747; }
+.call-incoming button { background: #df896d; }
+.call-error { background: #fbeceb; color: #ae5a51; }
 .send-button::after { display: none; }
 .send-button { width: 36px; height: 36px; min-height: 36px; border-radius: 10px; background: #e6876d; color: #fff; font-size: 20px; }
