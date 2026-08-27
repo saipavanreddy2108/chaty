@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer } from 'ws'
-import { authenticateUsername, createUsernameAccount, createSession, deleteMessage, editMessage, findUserBySession, getMessagesForUser, getUsersForUser, saveMessage, setupDatabase, updateProfile } from './db.js'
+import { authenticateUsername, createMessageRequest, createUsernameAccount, createSession, deleteMessage, editMessage, findUserBySession, getAllUsers, getConversationState, getMessageRequests, getMessagesForUser, getUsersForUser, respondToMessageRequest, saveMessage, setupDatabase, updateProfile } from './db.js'
 
 const clients = new Map()
 const colors = ['coral', 'blue', 'gold', 'lavender', 'mint']
