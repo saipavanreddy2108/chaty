@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer } from 'ws'
-import { authenticateUsername, createUsernameAccount, createSession, findUserBySession, getMessagesForUser, saveMessage, setupDatabase } from './db.js'
+import { authenticateUsername, createUsernameAccount, createSession, findUserBySession, getAllUsers, getMessagesForUser, saveMessage, setupDatabase } from './db.js'
 
 const clients = new Map()
 const colors = ['coral', 'blue', 'gold', 'lavender', 'mint']
@@ -61,9 +61,13 @@ const httpServer = createServer((request, response) => {
 })
 const websocketServer = new WebSocketServer({ server: httpServer, path: '/ws' })
 
-function broadcastUsers() {
-  const users = [...clients.values()].map(({ id, name, color }) => ({ id, name, color, online: true }))
-  for (const [socket, user] of clients) socket.send(JSON.stringify({ type: 'users', users, selfId: user.id }))
+async function broadcastUsers() {
+  const onlineIds = new Set([...clients.values()].map((user) => user.id))
+  const registeredUsers = await getAllUsers()
+  for (const [socket, user] of clients) {
+    const users = registeredUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) }))
+    socket.send(JSON.stringify({ type: 'users', users, selfId: user.id }))
+  }
 }
 
 websocketServer.on('connection', (socket) => {
@@ -74,7 +78,7 @@ websocketServer.on('connection', (socket) => {
       const user = await findUserBySession(data.token)
       if (!user) return socket.send(JSON.stringify({ type: 'error', message: 'Your session has expired.' }))
       clients.set(socket, user)
-      broadcastUsers()
+      await broadcastUsers()
       const history = await getMessagesForUser(user.id)
       if (history.length) socket.send(JSON.stringify({ type: 'history', messages: history.map((message) => ({ ...message, from: message.from === user.id ? 'me' : message.from })) }))
     }
@@ -89,7 +93,7 @@ websocketServer.on('connection', (socket) => {
       recipient[0].send(JSON.stringify({ type: 'message', message }))
     }
   })
-  socket.on('close', () => { clients.delete(socket); broadcastUsers() })
+  socket.on('close', () => { clients.delete(socket); broadcastUsers().catch(() => undefined) })
 })
 
 const port = Number(process.env.PORT || 3001)

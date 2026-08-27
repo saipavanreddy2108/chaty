@@ -14,6 +14,7 @@ function doPost(event) {
     if (data.action === 'createSession') return createSession(data)
     if (data.action === 'findSession') return findSession(data)
     if (data.action === 'getMessages') return getMessages(data)
+    if (data.action === 'getUsers') return getUsers()
     if (data.action === 'saveMessage') return saveMessage(data)
     return json({ ok: false, error: 'Unknown action' })
   } catch (error) {
@@ -49,6 +50,13 @@ function createUser(data) {
 function authenticateUser(data) {
   const row = rows('Users').find((item) => item[1] === data.username || item[2] === data.email)
   return json({ ok: true, user: row ? userFromRow(row) : null })
+}
+
+function getUsers() {
+  const users = rows('Users').map(function(row) {
+    return { id: row[0], name: row[1], color: row[4] }
+  })
+  return json({ ok: true, users: users })
 }
 
 function createSession(data) {

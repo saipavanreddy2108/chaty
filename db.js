@@ -58,6 +58,11 @@ export async function authenticateUsername(username, password) {
   return publicUser(user)
 }
 
+export async function getAllUsers() {
+  const { users: savedUsers } = await sheetsRequest('getUsers')
+  return savedUsers
+}
+
 export async function createSession(userId) {
   const token = randomBytes(32).toString('hex')
   await sheetsRequest('createSession', { userId, sessionHash: createHash('sha256').update(token).digest('hex') })
