@@ -31,7 +31,12 @@ function doPost(event) {
 }
 
 function sheet(name) {
-  const result = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name)
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
+  let result = spreadsheet.getSheetByName(name)
+  if (!result && name === 'Requests') {
+    result = spreadsheet.insertSheet(name)
+    result.appendRow(['requestId', 'from', 'to', 'messageId', 'status', 'createdAt'])
+  }
   if (!result) throw new Error(`Missing sheet: ${name}`)
   return result
 }
