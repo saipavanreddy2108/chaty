@@ -30,3 +30,4 @@ LocalTunnel prints an `https://...` URL. Share that URL with other people. They 
 - Only expose Chaty's port `3001` through the tunnel.
 - Keep the Google Sheet private and never put its edit URL in the client.
 - Users sign in with the username and password saved in the `Users` tab.
+- Add a `Requests` tab with headers: `requestId | from | to | messageId | status | createdAt`.

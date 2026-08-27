@@ -98,15 +98,27 @@ websocketServer.on('connection', (socket) => {
       await broadcastUsers()
       const history = await getMessagesForUser(user.id)
       if (history.length) socket.send(JSON.stringify({ type: 'history', messages: history.map((message) => ({ ...message, from: message.from === user.id ? 'me' : message.from })) }))
+      socket.send(JSON.stringify({ type: 'message-requests', requests: await getMessageRequests(user.id) }))
     }
     if (data.type === 'message' && typeof data.text === 'string') {
       const sender = clients.get(socket)
       if (!sender) return
       const recipient = [...clients.entries()].find(([, user]) => user.id === data.to)
+      const state = await getConversationState(sender.id, data.to)
+      if (state.status === 'pending' || state.status === 'deleted') {
+        socket.send(JSON.stringify({ type: 'error', message: 'Your message request is waiting for a response.' }))
+        return
+      }
       const message = { id: `${Date.now()}-${Math.random()}`, from: sender.id, to: data.to, text: data.text.slice(0, 1000), time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }
       await saveMessage(message)
+      const isNewConversation = !state.hasMessages
+      const request = isNewConversation ? { requestId: `${Date.now()}-${Math.random()}`, messageId: message.id, from: sender.id, to: data.to, status: 'pending' } : null
+      if (request) await createMessageRequest(request)
       socket.send(JSON.stringify({ type: 'message', message: { ...message, from: 'me' } }))
-      if (recipient) recipient[0].send(JSON.stringify({ type: 'message', message }))
+      if (recipient) {
+        recipient[0].send(JSON.stringify({ type: 'message', message }))
+        if (request) recipient[0].send(JSON.stringify({ type: 'message-request', request }))
+      }
     }
     if (data.type === 'search-users' && typeof data.query === 'string') {
       const user = clients.get(socket)
@@ -126,6 +138,15 @@ websocketServer.on('connection', (socket) => {
       }
     }
     if (data.type === 'delete-message' && typeof data.messageId === 'string') {
+          if (data.type === 'respond-request' && typeof data.requestId === 'string' && (data.status === 'accepted' || data.status === 'deleted')) {
+            const user = clients.get(socket)
+            if (!user) return
+            await respondToMessageRequest(data.requestId, user.id, data.status)
+            socket.send(JSON.stringify({ type: 'request-updated', requestId: data.requestId, status: data.status }))
+            for (const [recipientSocket, recipientUser] of clients) {
+              if (recipientUser.id !== user.id && recipientSocket.readyState === 1) recipientSocket.send(JSON.stringify({ type: 'request-updated', requestId: data.requestId, status: data.status }))
+            }
+          }
       const sender = clients.get(socket)
       if (!sender) return
       await deleteMessage(data.messageId, sender.id)

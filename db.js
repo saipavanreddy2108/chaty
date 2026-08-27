@@ -105,3 +105,20 @@ export async function editMessage(messageId, userId, text) {
 export async function deleteMessage(messageId, userId) {
   await sheetsRequest('deleteMessage', { messageId, userId })
 }
+
+export async function createMessageRequest(request) {
+  await sheetsRequest('createRequest', request)
+}
+
+export async function getMessageRequests(userId) {
+  const { requests } = await sheetsRequest('getRequests', { userId })
+  return requests
+}
+
+export async function getConversationState(from, to) {
+  return sheetsRequest('conversationState', { from, to })
+}
+
+export async function respondToMessageRequest(requestId, userId, status) {
+  await sheetsRequest('respondRequest', { requestId, userId, status })
+}

@@ -20,6 +20,10 @@ function doPost(event) {
     if (data.action === 'saveMessage') return saveMessage(data)
     if (data.action === 'editMessage') return editMessage(data)
     if (data.action === 'deleteMessage') return deleteMessage(data)
+    if (data.action === 'createRequest') return createRequest(data)
+    if (data.action === 'getRequests') return getRequests(data)
+    if (data.action === 'conversationState') return conversationState(data)
+    if (data.action === 'respondRequest') return respondRequest(data)
     return json({ ok: false, error: 'Unknown action' })
   } catch (error) {
     return json({ ok: false, error: error.message })
@@ -143,6 +147,41 @@ function deleteMessage(data) {
   if (row[1] !== data.userId) throw new Error('You can only delete your own messages')
   currentSheet.getRange(rowIndex + 2, 4).setValue('Message deleted')
   currentSheet.getRange(rowIndex + 2, 7).setValue(new Date())
+  return json({ ok: true })
+}
+
+function createRequest(data) {
+  sheet('Requests').appendRow([data.requestId, data.from, data.to, data.messageId, 'pending', new Date()])
+  return json({ ok: true })
+}
+
+function getRequests(data) {
+  const requests = rows('Requests').filter(function(row) {
+    return row[2] === data.userId && row[4] === 'pending'
+  }).map(function(row) {
+    return { requestId: row[0], from: row[1], to: row[2], messageId: row[3], status: row[4], createdAt: row[5] }
+  })
+  return json({ ok: true, requests: requests })
+}
+
+function conversationState(data) {
+  const request = rows('Requests').find(function(row) {
+    return (row[1] === data.from && row[2] === data.to) || (row[1] === data.to && row[2] === data.from)
+  })
+  const hasMessages = rows('Messages').some(function(row) {
+    return (row[1] === data.from && row[2] === data.to) || (row[1] === data.to && row[2] === data.from)
+  })
+  return json({ ok: true, hasMessages: hasMessages, status: request ? request[4] : null })
+}
+
+function respondRequest(data) {
+  const currentSheet = sheet('Requests')
+  const rowIndex = rows('Requests').findIndex(function(row) {
+    return row[0] === data.requestId && row[2] === data.userId && row[4] === 'pending'
+  })
+  if (rowIndex < 0) throw new Error('Request not found')
+  if (data.status !== 'accepted' && data.status !== 'deleted') throw new Error('Invalid request status')
+  currentSheet.getRange(rowIndex + 2, 5).setValue(data.status)
   return json({ ok: true })
 }
 

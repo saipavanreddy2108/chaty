@@ -58,5 +58,10 @@ button { border: 0; cursor: pointer; }
 .deleted-message { opacity: .65; font-style: italic; }
 .edited-label { font-size: 9px; opacity: .65; }
 .cancel-edit { padding: 0 5px; background: transparent; color: #b96c58; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.request-banner { margin: 18px 0 10px; padding: 14px 16px; border: 1px solid #f0d4cb; border-radius: 10px; background: #fff7f4; color: #5d514d; }
+.request-banner strong { color: #bd6b57; font-size: 12px; }
+.request-banner p { margin: 5px 0 12px; color: #8c817d; font-size: 11px; }
+.request-banner button { margin-right: 14px; padding: 0; background: transparent; color: #bd6b57; font-size: 11px; font-weight: 700; }
+.request-banner button:hover { text-decoration: underline; }
 .send-button::after { display: none; }
 .send-button { width: 36px; height: 36px; min-height: 36px; border-radius: 10px; background: #e6876d; color: #fff; font-size: 20px; }
