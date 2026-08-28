@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "@vitejs/plugin-react": "latest",
     "mongodb": "latest",
     "react": "latest",
