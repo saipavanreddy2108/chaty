@@ -73,3 +73,185 @@ button { border: 0; cursor: pointer; }
 .unread-count { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #e6876d; color: #fff; font-size: 10px; font-weight: 700; }
 .send-button::after { display: none; }
 .send-button { width: 36px; height: 36px; min-height: 36px; border-radius: 10px; background: #e6876d; color: #fff; font-size: 20px; }
+
+/* Calm dusk palette */
+:root { color: #263436; background: #dfe9e7; }
+body { background: #dfe9e7; }
+.app-shell { background: #dfe9e7; }
+.rail { background: #29403f; color: #a8c0ba; }
+.brand-mark { color: #f5f7f3; }
+.brand-mark span { color: #e4937a; }
+.rail-button { color: #a8c0ba; }
+.rail-button:hover, .rail-button.active { color: #f7faf6; background: #3b5955; }
+.rail-button::after, .profile-button::after { color: #a8c0ba; }
+.profile-dot { background: #d88670; }
+.inbox-panel, .chat-panel { background: #f7faf8; }
+.inbox-panel { border-right-color: #d7e3df; }
+.eyebrow { color: #78918d; }
+.inbox-header h1 { color: #263c3d; }
+.count, .unread-count { background: #d88670; }
+.compose-button { background: #f3e1db; color: #b96755; }
+.search-box { background: #eaf1ef; color: #78918d; }
+.search-box input { color: #304546; }
+.tabs { border-bottom-color: #dce7e4; }
+.tab { color: #8ba09d; }
+.active-tab { color: #29403f; }
+.active-tab:after { background: #d88670; }
+.request-count { color: #c56f5c; }
+.conversation { color: #2d4142; }
+.conversation:hover { background: #edf4f1; }
+.conversation.selected { background: #e4efeb; }
+.conversation-copy span, .conversation-meta small { color: #78918d; }
+.avatar-coral { background: #d88670; }
+.avatar-sage { background: #78a89a; }
+.avatar-lilac { background: #8b8da9; }
+.avatar-sky { background: #76a4ac; }
+.empty-state, .inbox-footer { color: #849a96; }
+.status-line i { background: #78a89a; }
+.status-line i.offline { background: #d88670; }
+.chat-header { border-bottom-color: #dce7e4; }
+.chat-person h2, .details-panel h2 { color: #29403f; }
+.chat-person p { color: #5e9d8d; }
+.chat-actions button, .details-heading button { color: #78918d; }
+.chat-actions button:hover { color: #29403f; }
+.profile-intro h3 { color: #29403f; }
+.profile-intro p, .chat-placeholder, .details-empty { color: #849a96; }
+.profile-intro button, .chat-placeholder span, .details-empty span { color: #c97863; }
+.date-divider { color: #8ba09d; }
+.date-divider:before, .date-divider:after { background: #dce7e4; }
+.message-bubble { background: #e7efed; color: #3c5051; }
+.mine .message-bubble { background: #d17e68; color: #fff; }
+.message-form { background: #f7faf8; border-color: #cfdfda; }
+.message-form input { color: #304546; }
+.form-icon, .send-button { color: #78918d; }
+.send-button { background: #d17e68; }
+.send-button:hover { background: #b96755; }
+.details-panel { background: #edf4f1; border-left-color: #d7e3df; }
+.detail-handle, .detail-actions button { color: #78918d; }
+.detail-actions { border-bottom-color: #d5e2de; }
+.detail-actions span { color: #41615d; }
+.detail-section { border-bottom-color: #d5e2de; }
+.detail-row { color: #496260; }
+.detail-row b { color: #8ba09d; }
+.shared-note { background: #dcebe6; color: #4b8879; }
+.shared-note p { color: #6c9d91; }
+.request-banner { border-color: #ead1c8; background: #fff5f1; color: #5c5551; }
+.request-banner strong, .request-banner button { color: #b96755; }
+.request-banner p { color: #8b7b74; }
+.call-panel { background: #dcebe6; color: #477e6e; }
+.call-panel button { background: #5d9b88; }
+.call-panel button:hover { background: #477e6e; }
+.call-incoming { background: #fff0e9; color: #a96747; }
+.call-incoming button { background: #d17e68; }
+.call-error { background: #f8e7e5; color: #ae5a51; }
+.settings-backdrop { background: rgba(35, 57, 56, .45); }
+.settings-card { background: #f7faf8; box-shadow: 0 22px 60px rgba(35, 57, 56, .2); }
+.settings-form label { color: #526b68; }
+.settings-form label span { color: #8ba09d; }
+.settings-form input { border-color: #cfdfda; background: #fff; color: #304546; }
+.settings-form input:focus, .join-card input:focus { border-color: #cf806d; box-shadow: 0 0 0 3px #f1d8d0; }
+.settings-logout { color: #ae5a51; }
+.settings-success { color: #4f9679; }
+.join-screen { background: #dfe9e7; }
+.join-card { background: rgba(247, 250, 248, .94); border-color: rgba(255, 255, 255, .7); box-shadow: 0 24px 70px rgba(38, 61, 60, .16); }
+.join-brand { color: #29403f; }
+.join-card h1 { color: #29403f; }
+.join-card h1 em { color: #c87562; }
+.join-copy { color: #718783; }
+.join-card label { color: #526b68; }
+.join-card input { border-color: #cfdfda; background: #fff; color: #304546; }
+.join-button { background: #d17e68; }
+.join-button:hover { background: #b96755; }
+.auth-switch { color: #b96755; }
+.join-orb { opacity: .65; }
+.orb-one { background: #c8ded8; }
+.orb-two { background: #e6c8be; }
+
+/* Comfortable dark mode */
+:root { color: #e4ece8; background: #182827; }
+body { background: #182827; }
+.app-shell { background: #182827; }
+.rail { background: #142321; color: #8da9a1; }
+.brand-mark { color: #f2f5f1; }
+.rail-button { color: #8da9a1; }
+.rail-button:hover, .rail-button.active { color: #f4f8f5; background: #2b4642; }
+.rail-button::after, .profile-button::after { color: #8da9a1; }
+.profile-dot { background: #c97965; }
+.inbox-panel, .chat-panel { background: #213432; }
+.inbox-panel { border-right-color: #344b48; }
+.eyebrow { color: #91aaa4; }
+.inbox-header h1, .chat-person h2, .details-panel h2 { color: #e5eeea; }
+.count, .unread-count { background: #c97965; }
+.compose-button { background: #493631; color: #e39a84; }
+.search-box { background: #293f3d; color: #91aaa4; }
+.search-box input, .message-form input { color: #dce8e3; }
+.search-box input::placeholder, .message-form input::placeholder { color: #809894; }
+.tabs { border-bottom-color: #344b48; }
+.tab { color: #829b96; }
+.active-tab { color: #e5eeea; }
+.active-tab:after { background: #d1816d; }
+.request-count { color: #d88974; }
+.conversation { color: #dce8e3; }
+.conversation:hover { background: #2a413e; }
+.conversation.selected { background: #304b47; }
+.conversation-copy span, .conversation-meta small { color: #91aaa4; }
+.empty-state, .inbox-footer { color: #8aa39d; }
+.status-line i { background: #72a892; }
+.status-line i.offline { background: #c97965; }
+.chat-header { border-bottom-color: #344b48; }
+.chat-person p { color: #75b39e; }
+.chat-actions button, .details-heading button { color: #91aaa4; }
+.chat-actions button:hover { color: #f0f6f2; }
+.profile-intro h3 { color: #e5eeea; }
+.profile-intro p, .chat-placeholder, .details-empty { color: #8aa39d; }
+.profile-intro button, .chat-placeholder span, .details-empty span { color: #d88974; }
+.date-divider { color: #8aa39d; }
+.date-divider:before, .date-divider:after { background: #344b48; }
+.message-bubble { background: #304642; color: #dce8e3; }
+.mine .message-bubble { background: #bd705d; color: #fff8f4; }
+.message-form { background: #213432; border-color: #49635e; }
+.form-icon { color: #91aaa4; }
+.send-button { background: #c97965; }
+.send-button:hover { background: #df8c75; }
+.details-panel { background: #1c302e; border-left-color: #344b48; }
+.detail-handle, .detail-actions button { color: #8aa39d; }
+.detail-actions { border-bottom-color: #344b48; }
+.detail-actions span { color: #b5cec5; }
+.detail-section { border-bottom-color: #344b48; }
+.detail-row { color: #c7d9d3; }
+.detail-row b { color: #829b96; }
+.shared-note { background: #29453f; color: #8fc2ae; }
+.shared-note p { color: #9bbeb4; }
+.request-banner { border-color: #68483e; background: #3a2d2a; color: #e3d6cf; }
+.request-banner strong, .request-banner button { color: #e39a84; }
+.request-banner p { color: #bda8a0; }
+.call-panel { background: #29453f; color: #9bc7b6; }
+.call-panel button { background: #5b9c86; }
+.call-panel button:hover { background: #76b39c; }
+.call-incoming { background: #49352d; color: #e2a082; }
+.call-incoming button { background: #c97965; }
+.call-error { background: #482f30; color: #e2a09a; }
+.settings-backdrop { background: rgba(10, 20, 19, .68); }
+.settings-card { background: #263d3a; box-shadow: 0 22px 60px rgba(5, 15, 14, .48); }
+.settings-form label { color: #c4d5cf; }
+.settings-form label span { color: #829b96; }
+.settings-form input { border-color: #49635e; background: #1d302e; color: #e1ece7; }
+.settings-form input:focus, .join-card input:focus { border-color: #d88974; box-shadow: 0 0 0 3px rgba(216, 137, 116, .22); }
+.settings-logout { color: #e09a8a; }
+.settings-success { color: #83c0a6; }
+.join-screen { background: #182827; }
+.join-card { background: rgba(34, 54, 52, .96); border-color: rgba(126, 163, 153, .22); box-shadow: 0 24px 70px rgba(5, 15, 14, .42); }
+.join-brand { color: #f1f6f2; }
+.join-card h1 { color: #e7f0eb; }
+.join-card h1 em { color: #df9079; }
+.join-copy { color: #9bb1ab; }
+.join-card label { color: #c6d6d0; }
+.join-card input { border-color: #49635e; background: #1d302e; color: #e1ece7; }
+.join-card input::placeholder { color: #78918b; }
+.join-button { background: #c97965; }
+.join-button:hover { background: #df8c75; }
+.auth-switch { color: #e09a84; }
+.auth-error { color: #f0a198; }
+.join-orb { opacity: .18; }
+.orb-one { background: #6caaa0; }
+.orb-two { background: #c97965; }

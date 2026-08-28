@@ -73,7 +73,9 @@ const httpServer = createServer((request, response) => {
     response.end('Build the client with npm run build first.')
     return
   }
-  response.writeHead(200, { 'Content-Type': contentTypes[extname(pathToServe)] || 'application/octet-stream' })
+  const headers = { 'Content-Type': contentTypes[extname(pathToServe)] || 'application/octet-stream' }
+  if (extname(pathToServe) === '.html') headers['Cache-Control'] = 'no-store'
+  response.writeHead(200, headers)
   response.end(readFileSync(pathToServe))
 })
 const websocketServer = new WebSocketServer({ server: httpServer, path: '/ws' })
