@@ -233,9 +233,8 @@ websocketServer.on('connection', (socket) => {
 })
 
 const port = Number(process.env.PORT || 3001)
-setupDatabase().then(() => {
-  httpServer.listen(port, '0.0.0.0', () => console.log(`Chaty is running on port ${port} (temporary memory mode)`))
-}).catch((error) => {
-  console.error('Database setup failed:', error.message)
-  process.exit(1)
+setupDatabase().catch((error) => {
+  console.warn('Database initialization warning:', error.message)
+}).finally(() => {
+  httpServer.listen(port, '0.0.0.0', () => console.log(`Chaty is running on port ${port}`))
 })
