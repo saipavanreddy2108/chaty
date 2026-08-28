@@ -138,15 +138,6 @@ websocketServer.on('connection', (socket) => {
       }
     }
     if (data.type === 'delete-message' && typeof data.messageId === 'string') {
-          if (data.type === 'respond-request' && typeof data.requestId === 'string' && (data.status === 'accepted' || data.status === 'deleted')) {
-            const user = clients.get(socket)
-            if (!user) return
-            await respondToMessageRequest(data.requestId, user.id, data.status)
-            socket.send(JSON.stringify({ type: 'request-updated', requestId: data.requestId, status: data.status }))
-            for (const [recipientSocket, recipientUser] of clients) {
-              if (recipientUser.id !== user.id && recipientSocket.readyState === 1) recipientSocket.send(JSON.stringify({ type: 'request-updated', requestId: data.requestId, status: data.status }))
-            }
-          }
       const sender = clients.get(socket)
       if (!sender) return
       await deleteMessage(data.messageId, sender.id)
@@ -154,6 +145,15 @@ websocketServer.on('connection', (socket) => {
       socket.send(update)
       for (const [recipientSocket, user] of clients) {
         if (user.id === data.to && recipientSocket.readyState === 1) recipientSocket.send(update)
+      }
+    }
+    if (data.type === 'respond-request' && typeof data.requestId === 'string' && (data.status === 'accepted' || data.status === 'deleted')) {
+      const user = clients.get(socket)
+      if (!user) return
+      await respondToMessageRequest(data.requestId, user.id, data.status)
+      socket.send(JSON.stringify({ type: 'request-updated', requestId: data.requestId, status: data.status }))
+      for (const [recipientSocket, recipientUser] of clients) {
+        if (recipientUser.id !== user.id && recipientSocket.readyState === 1) recipientSocket.send(JSON.stringify({ type: 'request-updated', requestId: data.requestId, status: data.status }))
       }
     }
     if (['call-offer', 'call-answer', 'call-ice', 'call-accepted', 'call-rejected', 'call-ended'].includes(data.type) && typeof data.to === 'string') {
