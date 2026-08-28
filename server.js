@@ -83,16 +83,42 @@ const websocketServer = new WebSocketServer({ server: httpServer, path: '/ws' })
 async function broadcastUsers() {
   const onlineIds = new Set([...clients.values()].map((user) => user.id))
   for (const [socket, user] of clients) {
+    if (socket.readyState !== 1) continue
     const registeredUsers = await getUsersForUser(user.id)
     const users = registeredUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) }))
     socket.send(JSON.stringify({ type: 'users', users, selfId: user.id }))
   }
 }
 
+// Keep-alive heartbeat interval to prevent Render / proxies from dropping idle WebSockets
+const heartbeatInterval = setInterval(() => {
+  for (const socket of websocketServer.clients) {
+    if (socket.isAlive === false) {
+      clients.delete(socket)
+      socket.terminate()
+      continue
+    }
+    socket.isAlive = false
+    socket.ping()
+  }
+}, 30000)
+
+websocketServer.on('close', () => clearInterval(heartbeatInterval))
+
 websocketServer.on('connection', (socket) => {
+  socket.isAlive = true
+  socket.on('pong', () => { socket.isAlive = true })
+
   socket.on('message', async (raw) => {
     let data
     try { data = JSON.parse(raw.toString()) } catch { return }
+
+    if (data.type === 'ping') {
+      socket.isAlive = true
+      socket.send(JSON.stringify({ type: 'pong' }))
+      return
+    }
+
     if (data.type === 'identify' && typeof data.token === 'string') {
       const user = await findUserBySession(data.token)
       if (!user) return socket.send(JSON.stringify({ type: 'error', message: 'Your session has expired.' }))
@@ -102,25 +128,41 @@ websocketServer.on('connection', (socket) => {
       if (history.length) socket.send(JSON.stringify({ type: 'history', messages: history.map((message) => ({ ...message, from: message.from === user.id ? 'me' : message.from })) }))
       socket.send(JSON.stringify({ type: 'message-requests', requests: await getMessageRequests(user.id) }))
     }
-    if (data.type === 'message' && typeof data.text === 'string') {
+
+    if (data.type === 'message' && typeof data.to === 'string') {
       const sender = clients.get(socket)
       if (!sender) return
+      const textContent = typeof data.text === 'string' ? data.text.trim().slice(0, 2000) : ''
+      const imageContent = typeof data.image === 'string' && data.image.startsWith('data:image/') ? data.image : null
+      if (!textContent && !imageContent) return
+
       const recipient = [...clients.entries()].find(([, user]) => user.id === data.to)
       const state = await getConversationState(sender.id, data.to)
       if (state.status === 'pending' || state.status === 'deleted') {
         socket.send(JSON.stringify({ type: 'error', message: 'Your message request is waiting for a response.' }))
         return
       }
-      const message = { id: `${Date.now()}-${Math.random()}`, from: sender.id, to: data.to, text: data.text.slice(0, 1000), time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }
-      await saveMessage(message)
+
+      const message = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        from: sender.id,
+        to: data.to,
+        text: textContent,
+        image: imageContent,
+        time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true })
+      }
+
       const isNewConversation = !state.hasMessages
-      const request = isNewConversation ? { requestId: `${Date.now()}-${Math.random()}`, messageId: message.id, from: sender.id, to: data.to, status: 'pending' } : null
+      const request = isNewConversation ? { requestId: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, messageId: message.id, from: sender.id, to: data.to, status: 'pending' } : null
+
       socket.send(JSON.stringify({ type: 'message', message: { ...message, from: 'me' } }))
-      if (recipient) {
+      if (recipient && recipient[0].readyState === 1) {
         recipient[0].send(JSON.stringify({ type: 'message', message }))
         if (request) recipient[0].send(JSON.stringify({ type: 'message-request', request }))
       }
+
       try {
+        // Single persistent save (fixed duplicate saveMessage bug)
         await saveMessage(message)
         if (request) await createMessageRequest(request)
       } catch (error) {
@@ -128,6 +170,16 @@ websocketServer.on('connection', (socket) => {
         socket.send(JSON.stringify({ type: 'error', message: 'Message delivered live but could not be saved.' }))
       }
     }
+
+    if (data.type === 'typing' && typeof data.to === 'string') {
+      const sender = clients.get(socket)
+      if (!sender) return
+      const recipient = [...clients.entries()].find(([, user]) => user.id === data.to)
+      if (recipient && recipient[0].readyState === 1) {
+        recipient[0].send(JSON.stringify({ type: 'typing', from: sender.id, isTyping: Boolean(data.isTyping) }))
+      }
+    }
+
     if (data.type === 'search-users' && typeof data.query === 'string') {
       const user = clients.get(socket)
       if (!user) return
@@ -135,6 +187,7 @@ websocketServer.on('connection', (socket) => {
       const foundUsers = await getUsersForUser(user.id, data.query.trim().slice(0, 50))
       socket.send(JSON.stringify({ type: 'users', users: foundUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) })), selfId: user.id }))
     }
+
     if (data.type === 'edit-message' && typeof data.messageId === 'string' && typeof data.text === 'string') {
       const sender = clients.get(socket)
       if (!sender || !data.text.trim()) return
@@ -145,6 +198,7 @@ websocketServer.on('connection', (socket) => {
         if (user.id === data.to && recipientSocket.readyState === 1) recipientSocket.send(update)
       }
     }
+
     if (data.type === 'delete-message' && typeof data.messageId === 'string') {
       const sender = clients.get(socket)
       if (!sender) return
@@ -155,6 +209,7 @@ websocketServer.on('connection', (socket) => {
         if (user.id === data.to && recipientSocket.readyState === 1) recipientSocket.send(update)
       }
     }
+
     if (data.type === 'respond-request' && typeof data.requestId === 'string' && (data.status === 'accepted' || data.status === 'deleted')) {
       const user = clients.get(socket)
       if (!user) return
@@ -164,6 +219,7 @@ websocketServer.on('connection', (socket) => {
         if (recipientUser.id !== user.id && recipientSocket.readyState === 1) recipientSocket.send(JSON.stringify({ type: 'request-updated', requestId: data.requestId, status: data.status }))
       }
     }
+
     if (['call-offer', 'call-answer', 'call-ice', 'call-accepted', 'call-rejected', 'call-ended'].includes(data.type) && typeof data.to === 'string') {
       const sender = clients.get(socket)
       const recipient = [...clients.entries()].find(([, user]) => user.id === data.to)
@@ -172,6 +228,7 @@ websocketServer.on('connection', (socket) => {
       recipient[0].send(JSON.stringify(signal))
     }
   })
+
   socket.on('close', () => { clients.delete(socket); broadcastUsers().catch(() => undefined) })
 })
 
