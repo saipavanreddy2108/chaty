@@ -70,5 +70,6 @@ button { border: 0; cursor: pointer; }
 .call-incoming { background: #fff3e9; color: #a96747; }
 .call-incoming button { background: #df896d; }
 .call-error { background: #fbeceb; color: #ae5a51; }
+.unread-count { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #e6876d; color: #fff; font-size: 10px; font-weight: 700; }
 .send-button::after { display: none; }
 .send-button { width: 36px; height: 36px; min-height: 36px; border-radius: 10px; background: #e6876d; color: #fff; font-size: 20px; }

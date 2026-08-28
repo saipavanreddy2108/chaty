@@ -113,11 +113,17 @@ websocketServer.on('connection', (socket) => {
       await saveMessage(message)
       const isNewConversation = !state.hasMessages
       const request = isNewConversation ? { requestId: `${Date.now()}-${Math.random()}`, messageId: message.id, from: sender.id, to: data.to, status: 'pending' } : null
-      if (request) await createMessageRequest(request)
       socket.send(JSON.stringify({ type: 'message', message: { ...message, from: 'me' } }))
       if (recipient) {
         recipient[0].send(JSON.stringify({ type: 'message', message }))
         if (request) recipient[0].send(JSON.stringify({ type: 'message-request', request }))
+      }
+      try {
+        await saveMessage(message)
+        if (request) await createMessageRequest(request)
+      } catch (error) {
+        console.error('Message storage error:', error.message)
+        socket.send(JSON.stringify({ type: 'error', message: 'Message delivered live but could not be saved.' }))
       }
     }
     if (data.type === 'search-users' && typeof data.query === 'string') {
