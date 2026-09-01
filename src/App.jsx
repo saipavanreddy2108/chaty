@@ -765,7 +765,6 @@ function App() {
         <nav className="rail-nav" aria-label="Primary navigation">
           <button className="rail-button active" aria-label="Messages" title="Messages">◒</button>
           <button className="rail-button" aria-label="Explore" title="Explore" onClick={() => setActiveTab('Inbox')}>⌕</button>
-          <button className="rail-button" aria-label="Requests" title="Requests" onClick={() => setActiveTab('Requests')}>♡</button>
           <button className="rail-button" aria-label="Saved" title="Saved">▱</button>
         </nav>
         <button className="rail-button profile-button" aria-label="Settings" title="Settings" onClick={openSettings}>
@@ -805,47 +804,14 @@ function App() {
             className={activeTab === 'Inbox' ? 'tab active-tab' : 'tab'}
             onClick={() => setActiveTab('Inbox')}
           >
-            People
-          </button>
-          <button
-            className={activeTab === 'Requests' ? 'tab active-tab' : 'tab'}
-            onClick={() => setActiveTab('Requests')}
-          >
-            Requests <span className="request-count">{messageRequests.filter((r) => r.status === 'pending').length || (connected ? 'Live' : 'Offline')}</span>
+            All Chats
           </button>
         </div>
 
         <div className="conversation-list">
-          {activeTab === 'Requests' ? (
+          {filteredPeople.length > 0 && (
             <>
-              {messageRequests.filter((r) => r.status === 'pending').map((request) => {
-                const requester = people.find((p) => p.id === request.from)
-                return requester ? (
-                  <button
-                    key={request.requestId}
-                    className={selectedId === request.from ? 'conversation selected request-item' : 'conversation request-item'}
-                    onClick={() => {
-                      setSelectedId(request.from)
-                      setMobileView('chat')
-                    }}
-                  >
-                    <Avatar person={requester} small />
-                    <span className="conversation-copy">
-                      <strong>{requester.name}</strong>
-                      <span>Wants to connect • {requester.online ? 'Online' : 'Offline'}</span>
-                    </span>
-                    <span className="conversation-meta">
-                      <small>request</small>
-                    </span>
-                  </button>
-                ) : null
-              })}
-              {messageRequests.filter((r) => r.status === 'pending').length === 0 && (
-                <p className="empty-state">No pending requests</p>
-              )}
-            </>
-          ) : (
-            <>
+              <div className="conversation-section-header">People</div>
               {filteredPeople.map((person) => (
                 <button
                   key={person.id}
@@ -869,10 +835,39 @@ function App() {
                   </span>
                 </button>
               ))}
-              {filteredPeople.length === 0 && (
-                <p className="empty-state">{people.length ? 'No people match your search.' : 'Open Chaty in another browser to chat with someone.'}</p>
-              )}
             </>
+          )}
+
+          {messageRequests.filter((r) => r.status === 'pending').length > 0 && (
+            <>
+              <div className="conversation-section-header">New Requests</div>
+              {messageRequests.filter((r) => r.status === 'pending').map((request) => {
+                const requester = people.find((p) => p.id === request.from)
+                return requester ? (
+                  <button
+                    key={request.requestId}
+                    className={selectedId === request.from ? 'conversation selected request-item' : 'conversation request-item'}
+                    onClick={() => {
+                      setSelectedId(request.from)
+                      setMobileView('chat')
+                    }}
+                  >
+                    <Avatar person={requester} small />
+                    <span className="conversation-copy">
+                      <strong>{requester.name}</strong>
+                      <span>Wants to connect • {requester.online ? 'Online' : 'Offline'}</span>
+                    </span>
+                    <span className="conversation-meta">
+                      <small>new</small>
+                    </span>
+                  </button>
+                ) : null
+              })}
+            </>
+          )}
+
+          {filteredPeople.length === 0 && messageRequests.filter((r) => r.status === 'pending').length === 0 && (
+            <p className="empty-state">{people.length ? 'No people match your search.' : 'Open Chaty in another browser to chat with someone.'}</p>
           )}
         </div>
 
