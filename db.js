@@ -205,6 +205,28 @@ export async function getAllUsers() {
   return [...memUsers.values()].map(publicUser)
 }
 
+export async function getUsersWithConversations(userId) {
+  if (isTursoActive) {
+    try {
+      const result = await client.execute({
+        sql: `SELECT DISTINCT u.id, u.name, u.username, u.color FROM users u WHERE u.id IN (SELECT DISTINCT fromId FROM messages WHERE toId = ? UNION SELECT DISTINCT toId FROM messages WHERE fromId = ?) AND u.id != ?`,
+        args: [userId, userId, userId]
+      })
+      return result.rows.map((r) => ({ id: r.id, name: r.name || r.username, color: r.color }))
+    } catch {}
+  }
+
+  const usersInConversations = new Set()
+  memMessages.forEach((msg) => {
+    if (msg.from === userId) usersInConversations.add(msg.to)
+    if (msg.to === userId) usersInConversations.add(msg.from)
+  })
+  return [...usersInConversations]
+    .map((id) => memUsers.get(id))
+    .filter((u) => u && u.id !== userId)
+    .map(publicUser)
+}
+
 export async function getUsersForUser(userId, query = '') {
   if (isTursoActive) {
     try {

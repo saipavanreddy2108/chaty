@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer } from 'ws'
-import { authenticateUsername, createMessageRequest, createUsernameAccount, createSession, deleteMessage, editMessage, findUserBySession, getAllUsers, getConversationState, getMessageRequests, getMessagesForUser, getUsersForUser, respondToMessageRequest, saveMessage, setupDatabase, updateProfile } from './db.js'
+import { authenticateUsername, createMessageRequest, createUsernameAccount, createSession, deleteMessage, editMessage, findUserBySession, getAllUsers, getConversationState, getMessageRequests, getMessagesForUser, getUsersForUser, getUsersWithConversations, respondToMessageRequest, saveMessage, setupDatabase, updateProfile } from './db.js'
 
 const clients = new Map()
 const colors = ['coral', 'blue', 'gold', 'lavender', 'mint']
@@ -85,8 +85,8 @@ async function broadcastUsers() {
   const onlineIds = new Set([...clients.values()].map((user) => user.id))
   for (const [socket, user] of clients) {
     if (socket.readyState !== 1) continue
-    const registeredUsers = await getUsersForUser(user.id)
-    const users = registeredUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) }))
+    const usersWithConversations = await getUsersWithConversations(user.id)
+    const users = usersWithConversations.map((person) => ({ ...person, online: onlineIds.has(person.id) }))
     socket.send(JSON.stringify({ type: 'users', users, selfId: user.id }))
   }
 }
