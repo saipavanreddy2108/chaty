@@ -424,6 +424,17 @@ input, textarea { font: inherit; }
 
 .conversation-meta { align-self: stretch; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; flex-shrink: 0; }
 
+.conversation.request-item {
+  background: linear-gradient(to right, rgba(255, 200, 70, 0.08), transparent);
+  border-left: 3px solid var(--accent);
+}
+.conversation.request-item:hover {
+  background: linear-gradient(to right, rgba(255, 200, 70, 0.15), var(--bg-hover));
+}
+.conversation.request-item.selected {
+  background: linear-gradient(to right, rgba(255, 200, 70, 0.2), var(--bg-active));
+}
+
 .unread-count {
   display: grid;
   place-items: center;

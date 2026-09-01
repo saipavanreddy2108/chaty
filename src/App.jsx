@@ -816,31 +816,63 @@ function App() {
         </div>
 
         <div className="conversation-list">
-          {filteredPeople.map((person) => (
-            <button
-              key={person.id}
-              className={selectedId === person.id ? 'conversation selected' : 'conversation'}
-              onClick={() => {
-                setSelectedId(person.id)
-                setMobileView('chat')
-                setUnreadCounts((current) => ({ ...current, [person.id]: 0 }))
-              }}
-            >
-              <Avatar person={person} small />
-              <span className="conversation-copy">
-                <strong>{person.name}</strong>
-                <span>
-                  {typingUsers[person.id] ? 'Typing...' : person.online ? 'Online now · Start chatting' : 'Offline'}
-                </span>
-              </span>
-              {unreadCounts[person.id] > 0 && <span className="unread-count">{unreadCounts[person.id]}</span>}
-              <span className="conversation-meta">
-                <small>{person.online ? 'live' : ''}</small>
-              </span>
-            </button>
-          ))}
-          {filteredPeople.length === 0 && (
-            <p className="empty-state">{people.length ? 'No people match your search.' : 'Open Chaty in another browser to chat with someone.'}</p>
+          {activeTab === 'Requests' ? (
+            <>
+              {messageRequests.filter((r) => r.status === 'pending').map((request) => {
+                const requester = people.find((p) => p.id === request.from)
+                return requester ? (
+                  <button
+                    key={request.requestId}
+                    className={selectedId === request.from ? 'conversation selected request-item' : 'conversation request-item'}
+                    onClick={() => {
+                      setSelectedId(request.from)
+                      setMobileView('chat')
+                    }}
+                  >
+                    <Avatar person={requester} small />
+                    <span className="conversation-copy">
+                      <strong>{requester.name}</strong>
+                      <span>Wants to connect • {requester.online ? 'Online' : 'Offline'}</span>
+                    </span>
+                    <span className="conversation-meta">
+                      <small>request</small>
+                    </span>
+                  </button>
+                ) : null
+              })}
+              {messageRequests.filter((r) => r.status === 'pending').length === 0 && (
+                <p className="empty-state">No pending requests</p>
+              )}
+            </>
+          ) : (
+            <>
+              {filteredPeople.map((person) => (
+                <button
+                  key={person.id}
+                  className={selectedId === person.id ? 'conversation selected' : 'conversation'}
+                  onClick={() => {
+                    setSelectedId(person.id)
+                    setMobileView('chat')
+                    setUnreadCounts((current) => ({ ...current, [person.id]: 0 }))
+                  }}
+                >
+                  <Avatar person={person} small />
+                  <span className="conversation-copy">
+                    <strong>{person.name}</strong>
+                    <span>
+                      {typingUsers[person.id] ? 'Typing...' : person.online ? 'Online now · Start chatting' : 'Offline'}
+                    </span>
+                  </span>
+                  {unreadCounts[person.id] > 0 && <span className="unread-count">{unreadCounts[person.id]}</span>}
+                  <span className="conversation-meta">
+                    <small>{person.online ? 'live' : ''}</small>
+                  </span>
+                </button>
+              ))}
+              {filteredPeople.length === 0 && (
+                <p className="empty-state">{people.length ? 'No people match your search.' : 'Open Chaty in another browser to chat with someone.'}</p>
+              )}
+            </>
           )}
         </div>
 
