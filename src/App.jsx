@@ -188,6 +188,9 @@ function App() {
 
   // WebRTC Audio Calls
   const [call, setCall] = useState(null)
+  const [callTimer, setCallTimer] = useState(0)
+  const [micMuted, setMicMuted] = useState(false)
+  const [speakerMuted, setSpeakerMuted] = useState(false)
   const peerConnectionRef = useRef(null)
   const localStreamRef = useRef(null)
   const pendingOfferRef = useRef(null)
@@ -195,6 +198,7 @@ function App() {
   const remoteAudioRef = useRef(null)
   const selectedIdRef = useRef(null)
   const callTimeoutRef = useRef(null)
+  const callTimerIntervalRef = useRef(null)
   const reconnectAttemptRef = useRef(0)
 
   const name = account?.user?.name || ''
@@ -517,11 +521,49 @@ function App() {
     await peerConnection.addIceCandidate(candidate)
   }
 
+  function formatCallDuration(totalSeconds) {
+    const safeSeconds = Math.max(0, totalSeconds || 0)
+    const minutes = String(Math.floor(safeSeconds / 60)).padStart(2, '0')
+    const seconds = String(safeSeconds % 60).padStart(2, '0')
+    return `${minutes}:${seconds}`
+  }
+
+  function clearCallTimer() {
+    if (callTimerIntervalRef.current) {
+      clearInterval(callTimerIntervalRef.current)
+      callTimerIntervalRef.current = null
+    }
+    setCallTimer(0)
+  }
+
+  function startCallTimer() {
+    clearCallTimer()
+    const tick = () => {
+      setCallTimer((current) => current + 1)
+    }
+    tick()
+    callTimerIntervalRef.current = setInterval(tick, 1000)
+  }
+
+  function syncCallAudioState() {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach((track) => {
+        track.enabled = !micMuted
+      })
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.muted = speakerMuted
+    }
+  }
+
   async function startAudioCall() {
     if (!selectedPerson || socket?.readyState !== WebSocket.OPEN || call) return
+    setMicMuted(false)
+    setSpeakerMuted(false)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       localStreamRef.current = stream
+      syncCallAudioState()
       const peerConnection = createPeerConnection(selectedPerson.id)
       stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
       const offer = await peerConnection.createOffer()
@@ -547,6 +589,7 @@ function App() {
       stopRingtone()
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       localStreamRef.current = stream
+      syncCallAudioState()
       const peerConnection = createPeerConnection(call.peerId)
       stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
       await peerConnection.setRemoteDescription(pendingOfferRef.current)
@@ -562,6 +605,24 @@ function App() {
       endCall(true)
     }
   }
+
+  useEffect(() => {
+    if (call?.status === 'connected') {
+      startCallTimer()
+    } else {
+      clearCallTimer()
+    }
+
+    return () => {
+      if (call?.status === 'connected') {
+        clearCallTimer()
+      }
+    }
+  }, [call?.status])
+
+  useEffect(() => {
+    syncCallAudioState()
+  }, [micMuted, speakerMuted, call?.status])
 
   function rejectAudioCall() {
     stopRingtone()
@@ -584,6 +645,9 @@ function App() {
     pendingOfferRef.current = null
     pendingIceCandidatesRef.current = []
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
+    setMicMuted(false)
+    setSpeakerMuted(false)
+    clearCallTimer()
     setCall(null)
   }
 
@@ -885,7 +949,7 @@ function App() {
                     : call.status === 'calling'
                     ? `Calling ${call.peerName}...`
                     : call.status === 'connected'
-                    ? `Live audio call with ${call.peerName}`
+                    ? `Live audio call with ${call.peerName} • ${formatCallDuration(callTimer)}`
                     : 'Audio call could not connect'}
                 </strong>
                 {call.status === 'incoming' && (
@@ -893,6 +957,16 @@ function App() {
                     <button type="button" onClick={acceptAudioCall}>Accept</button>
                     <button type="button" className="call-hangup-btn" onClick={rejectAudioCall}>Decline</button>
                   </>
+                )}
+                {call.status === 'connected' && (
+                  <div className="call-audio-controls">
+                    <button type="button" className={micMuted ? 'call-toggle-muted' : ''} onClick={() => setMicMuted((value) => !value)}>
+                      {micMuted ? 'Mic off' : 'Mic on'}
+                    </button>
+                    <button type="button" className={speakerMuted ? 'call-toggle-muted' : ''} onClick={() => setSpeakerMuted((value) => !value)}>
+                      {speakerMuted ? 'Speaker off' : 'Speaker on'}
+                    </button>
+                  </div>
                 )}
                 {call.status !== 'error' && call.status !== 'incoming' && (
                   <button type="button" className="call-hangup-btn" onClick={() => endCall(true)}>Hang up</button>
