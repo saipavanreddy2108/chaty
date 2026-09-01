@@ -350,7 +350,14 @@ function App() {
 
   const selectedPerson = people.find((person) => person.id === selectedId) || people[0]
   useEffect(() => { selectedIdRef.current = selectedId }, [selectedId])
-  const filteredPeople = useMemo(() => people.filter((person) => (person.name || person.username || '').toLowerCase().includes(query.toLowerCase())), [people, query])
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredPeople = useMemo(() => {
+    const items = people.filter((person) => {
+      const haystack = `${person.name || ''} ${person.username || ''}`.toLowerCase()
+      return !normalizedQuery || haystack.includes(normalizedQuery)
+    })
+    return items
+  }, [people, normalizedQuery])
   const visibleMessages = messages.filter((item) => selectedPerson && (item.from === selectedPerson.id || item.to === selectedPerson.id))
 
   // Scroll to bottom on new message

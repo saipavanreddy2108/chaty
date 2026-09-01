@@ -13,7 +13,7 @@ let isTursoActive = false
 const tursoUrl = process.env.TURSO_DATABASE_URL
 const tursoToken = process.env.TURSO_AUTH_TOKEN
 
-if (tursoUrl && tursoUrl.startsWith('libsql://') || (tursoUrl && tursoUrl.startsWith('https://'))) {
+if ((tursoUrl && tursoUrl.startsWith('libsql://')) || (tursoUrl && tursoUrl.startsWith('https://'))) {
   try {
     client = createClient({
       url: tursoUrl,
