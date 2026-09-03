@@ -1078,6 +1078,7 @@ button:focus-visible, input:focus-visible {
   border: 1px solid var(--border-color);
   background: var(--bg-panel);
 }
+.app-shell.details-hidden { grid-template-columns: 76px 332px minmax(420px, 1fr) 0; }
 .rail { background: var(--bg-rail); padding-top: 24px; border-right: 1px solid var(--border-color); }
 .brand-mark { color: var(--text-primary); font-size: 25px; }
 .brand-mark span { color: var(--accent); }
@@ -1143,6 +1144,8 @@ button:focus-visible, input:focus-visible {
 .message-controls { gap: 10px; }
 .message-controls button { min-height: 24px; }
 .details-panel { box-shadow: inset 1px 0 var(--border-subtle); }
+.details-panel { width: 276px; transition: width 0.2s ease, opacity 0.2s ease, padding 0.2s ease; }
+.details-panel.details-collapsed { width: 0; padding-left: 0; padding-right: 0; border-left: 0; opacity: 0; overflow: hidden; }
 .details-heading button:hover,
 .image-preview-remove:hover { color: var(--text-primary); }
 .settings-backdrop { padding: 24px; }
@@ -1175,7 +1178,9 @@ button:focus-visible, input:focus-visible {
 
 @media (max-width: 1280px) {
   .app-shell { grid-template-columns: 68px 300px minmax(380px, 1fr) 250px; }
+  .app-shell.details-hidden { grid-template-columns: 68px 300px minmax(380px, 1fr) 0; }
   .chat-content, .message-form-wrapper { max-width: 760px; }
+  .details-panel { width: 250px; }
 }
 
 @media (max-width: 1100px) {

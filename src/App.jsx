@@ -10,6 +10,7 @@ import {
   IconSearch,
   IconSend,
   IconSmile,
+  IconInfo,
   IconX
 } from './components/Icons'
 
@@ -60,6 +61,7 @@ function App() {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const [activeEmojiCategory, setActiveEmojiCategory] = useState(0)
   const [lightboxImage, setLightboxImage] = useState(null)
+  const [detailsOpen, setDetailsOpen] = useState(true)
 
   // Real-time typing indicators
   const [typingUsers, setTypingUsers] = useState({})
@@ -683,7 +685,7 @@ function App() {
   const isPeerTyping = selectedPerson && typingUsers[selectedPerson.id]
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${detailsOpen ? '' : 'details-hidden'}`}>
       {/* Hidden file input for attachments */}
       <input
         type="file"
@@ -697,7 +699,7 @@ function App() {
       <aside className="rail">
         <div className="brand-mark">c<span>·</span></div>
         <nav className="rail-nav" aria-label="Primary navigation">
-          <button className="rail-button active" aria-label="Messages" title="Messages"><IconMessageSquare size={19} /></button>
+          <button className="rail-button active" aria-label="Messages" title="Messages" onClick={() => setMobileView('inbox')}><IconMessageSquare size={19} /></button>
           <button className="rail-button" aria-label="Explore" title="Search people" onClick={() => { setActiveTab('Inbox'); setMobileView('inbox'); searchInputRef.current?.focus() }}><IconSearch size={19} /></button>
         </nav>
         <button className="rail-button profile-button" aria-label="Settings" title="Settings" onClick={openSettings}>
@@ -723,7 +725,7 @@ function App() {
         </header>
         
         <div className="search-box">
-          <span>⌕</span>
+          <IconSearch size={16} />
           <input
             ref={searchInputRef}
             value={query}
@@ -834,6 +836,7 @@ function App() {
               </div>
               <div className="chat-actions">
                 <button aria-label="Start audio call" title="Audio call" onClick={startAudioCall}><IconPhone size={18} /></button>
+                <button aria-label="Toggle contact details" title="Toggle contact details" onClick={() => setDetailsOpen((current) => !current)}><IconInfo size={18} /></button>
                 <button aria-label="Open settings" title="Settings" onClick={openSettings}><IconMoreVertical size={18} /></button>
               </div>
             </>
@@ -1039,12 +1042,12 @@ function App() {
       </section>
 
       {/* Details Side Panel */}
-      <aside className="details-panel">
+      <aside className={`details-panel ${detailsOpen ? '' : 'details-collapsed'}`} aria-hidden={!detailsOpen}>
         {selectedPerson ? (
           <>
             <div className="details-heading">
               <p className="eyebrow">Details</p>
-              <button aria-label="Close details" title="Close contact details" onClick={() => setSelectedId(null)}><IconX size={18} /></button>
+              <button aria-label="Close details" title="Close contact details" onClick={() => setDetailsOpen(false)}><IconX size={18} /></button>
             </div>
             <div className="detail-avatar">
               <Avatar person={selectedPerson} />
