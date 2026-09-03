@@ -1,16 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Sidebar } from './components/Sidebar'
-import { ConversationList } from './components/ConversationList'
-import { ChatHeader } from './components/ChatHeader'
-import { CallHud } from './components/CallHud'
-import { MessageStream } from './components/MessageStream'
-import { MessageComposer } from './components/MessageComposer'
-import { DetailsPanel } from './components/DetailsPanel'
-import { SettingsModal } from './components/SettingsModal'
-import { Lightbox } from './components/Lightbox'
-import { Toast } from './components/Toast'
-import { AuthScreen } from './components/AuthScreen'
-import { IconMessageSquare } from './components/Icons'
+import { Avatar } from './components/Avatar'
 
 import { playChime, startRingtone, stopRingtone } from './utils/audio'
 import {

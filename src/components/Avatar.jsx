@@ -12,7 +12,7 @@ export function Avatar({ person, size = 'md', showPresence = true, className = '
 
   return (
     <div className={'avatar ' + (sizeMap[size] || 'avatar-md') + ' ' + colorClass + ' ' + className}>
-      <span className= avatar-text>{initials}</span>
+      <span className="avatar-text">{initials}</span>
       {showPresence && (
         <span
           className={'presence-dot ' + (person?.online ? 'online' : 'offline')}
