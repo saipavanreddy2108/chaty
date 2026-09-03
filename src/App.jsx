@@ -10,7 +10,6 @@ import {
   IconSearch,
   IconSend,
   IconSmile,
-  IconStar,
   IconX
 } from './components/Icons'
 
@@ -43,6 +42,7 @@ function App() {
 
   const chatContentRef = useRef(null)
   const messageInputRef = useRef(null)
+  const searchInputRef = useRef(null)
   const fileInputRef = useRef(null)
 
   // Interactive extras state
@@ -53,6 +53,7 @@ function App() {
   const [editingMessageId, setEditingMessageId] = useState(null)
   const [messageRequests, setMessageRequests] = useState([])
   const [unreadCounts, setUnreadCounts] = useState({})
+  const [mutedIds, setMutedIds] = useState([])
   
   // Media attachments & emoji
   const [selectedImage, setSelectedImage] = useState(null)
@@ -76,6 +77,9 @@ function App() {
   const pendingIceCandidatesRef = useRef([])
   const remoteAudioRef = useRef(null)
   const selectedIdRef = useRef(null)
+  const mutedIdsRef = useRef([])
+  const isNearBottomRef = useRef(true)
+  const [newMessageCount, setNewMessageCount] = useState(0)
   const callTimeoutRef = useRef(null)
   const callTimerIntervalRef = useRef(null)
   const reconnectAttemptRef = useRef(0)
@@ -87,6 +91,10 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('chaty-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    mutedIdsRef.current = mutedIds
+  }, [mutedIds])
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -165,10 +173,10 @@ function App() {
         if (data.type === 'message') {
           setMessages((current) => [...current, data.message])
           if (data.message.from !== 'me') {
-            playChime('receive')
+            if (!mutedIdsRef.current.includes(data.message.from)) playChime('receive')
             if (data.message.from !== selectedIdRef.current) {
               setUnreadCounts((current) => ({ ...current, [data.message.from]: (current[data.message.from] || 0) + 1 }))
-              if ('Notification' in window && Notification.permission === 'granted') {
+              if (!mutedIdsRef.current.includes(data.message.from) && 'Notification' in window && Notification.permission === 'granted') {
                 new Notification('New Chaty message', { body: data.message.text || 'Sent an image' })
               }
             }
@@ -251,11 +259,46 @@ function App() {
   }, [people, normalizedQuery])
   const visibleMessages = messages.filter((item) => selectedPerson && (item.from === selectedPerson.id || item.to === selectedPerson.id))
 
-  // Scroll to bottom on new message
+  // Keep the user's reading position unless they are already at the bottom.
   useEffect(() => {
     const chatContent = chatContentRef.current
-    if (chatContent) chatContent.scrollTop = chatContent.scrollHeight
-  }, [selectedId, visibleMessages.length, typingUsers[selectedPerson?.id]])
+    if (!chatContent) return
+    chatContent.scrollTop = chatContent.scrollHeight
+    isNearBottomRef.current = true
+    setNewMessageCount(0)
+  }, [selectedId])
+
+  useEffect(() => {
+    const chatContent = chatContentRef.current
+    if (!chatContent || !visibleMessages.length) return
+    if (isNearBottomRef.current) {
+      chatContent.scrollTop = chatContent.scrollHeight
+      setNewMessageCount(0)
+    } else {
+      setNewMessageCount((current) => current + 1)
+    }
+  }, [visibleMessages.length])
+
+  function handleChatScroll(event) {
+    const element = event.currentTarget
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight
+    isNearBottomRef.current = distanceFromBottom < 80
+    if (isNearBottomRef.current) setNewMessageCount(0)
+  }
+
+  function scrollToLatest() {
+    const chatContent = chatContentRef.current
+    if (!chatContent) return
+    chatContent.scrollTo({ top: chatContent.scrollHeight, behavior: 'smooth' })
+    isNearBottomRef.current = true
+    setNewMessageCount(0)
+  }
+
+  function toggleMute(personId) {
+    setMutedIds((current) => current.includes(personId)
+      ? current.filter((id) => id !== personId)
+      : [...current, personId])
+  }
 
   // Typing indicator dispatch with debounce
   function handleInputChange(e) {
@@ -655,8 +698,7 @@ function App() {
         <div className="brand-mark">c<span>·</span></div>
         <nav className="rail-nav" aria-label="Primary navigation">
           <button className="rail-button active" aria-label="Messages" title="Messages"><IconMessageSquare size={19} /></button>
-          <button className="rail-button" aria-label="Explore" title="Search people" onClick={() => setActiveTab('Inbox')}><IconSearch size={19} /></button>
-          <button className="rail-button" aria-label="Saved" title="Saved messages"><IconStar size={19} /></button>
+          <button className="rail-button" aria-label="Explore" title="Search people" onClick={() => { setActiveTab('Inbox'); setMobileView('inbox'); searchInputRef.current?.focus() }}><IconSearch size={19} /></button>
         </nav>
         <button className="rail-button profile-button" aria-label="Settings" title="Settings" onClick={openSettings}>
           <div className="profile-dot">{name.slice(0, 2).toUpperCase()}</div>
@@ -683,6 +725,7 @@ function App() {
         <div className="search-box">
           <span>⌕</span>
           <input
+            ref={searchInputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search people"
@@ -804,7 +847,7 @@ function App() {
 
         {selectedPerson && (
           <>
-            <div className="chat-content" ref={chatContentRef}>
+            <div className="chat-content" ref={chatContentRef} onScroll={handleChatScroll}>
               <div className="profile-intro">
                 <Avatar person={selectedPerson} />
                 <h3>{selectedPerson.name}</h3>
@@ -863,6 +906,11 @@ function App() {
                   </div>
                 )}
               </div>
+              {newMessageCount > 0 && (
+                <button className="new-message-jump" type="button" onClick={scrollToLatest}>
+                  ↓ {newMessageCount} new {newMessageCount === 1 ? 'message' : 'messages'}
+                </button>
+              )}
             </div>
 
             {/* Audio Call Banner */}
@@ -1004,8 +1052,8 @@ function App() {
             <h2>{selectedPerson.name}</h2>
             <p className="detail-handle">{selectedPerson.online ? 'Online now' : 'Currently offline'}</p>
             <div className="detail-actions">
-              <button onClick={() => alert('Notifications muted for this conversation')}>
-                <span>♧</span> Mute
+              <button onClick={() => toggleMute(selectedPerson.id)}>
+                <span aria-hidden="true">◌</span> {mutedIds.includes(selectedPerson.id) ? 'Unmute' : 'Mute'}
               </button>
               <button onClick={startAudioCall}>
                 <span>⌁</span> Call
@@ -1015,12 +1063,12 @@ function App() {
               </button>
             </div>
             <div className="detail-section">
-              <button className="detail-row" onClick={() => alert('0 shared media files')}>
-                <span>Media, links & docs</span><b>›</b>
-              </button>
-              <button className="detail-row" onClick={() => alert('End-to-end WebSocket real-time delivery')}>
-                <span>Privacy & security</span><b>›</b>
-              </button>
+              <div className="detail-row">
+                <span>Media, links & docs</span><b>0</b>
+              </div>
+              <div className="detail-row">
+                <span>Privacy & security</span><b>Protected</b>
+              </div>
             </div>
             <div className="shared-note">
               <span>✦</span>

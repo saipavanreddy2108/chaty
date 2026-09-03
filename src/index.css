@@ -1152,6 +1152,26 @@ button:focus-visible, input:focus-visible {
 .auth-error { padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .empty-state { max-width: 230px; margin: 0 auto; }
 .status-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.new-message-jump {
+  position: sticky;
+  bottom: 12px;
+  align-self: center;
+  z-index: 4;
+  margin: 12px auto -2px;
+  padding: 8px 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border-color));
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+  font-size: 11px;
+  font-weight: 700;
+  animation: slideUp 0.18s ease-out;
+}
+.new-message-jump:hover { background: var(--accent-soft); }
+.detail-row { cursor: default; }
+.detail-row b { font-size: 10px; letter-spacing: 0.2px; text-transform: uppercase; }
+.detail-row:hover { padding-left: 4px; }
 
 @media (max-width: 1280px) {
   .app-shell { grid-template-columns: 68px 300px minmax(380px, 1fr) 250px; }
@@ -1171,6 +1191,7 @@ button:focus-visible, input:focus-visible {
   .message-form-wrapper { width: calc(100% - 24px); margin-bottom: 12px; }
   .message-bubble { max-width: 86%; }
   .message-form { min-height: 50px; }
+  .new-message-jump { bottom: 8px; }
   .chat-actions button { width: 38px; height: 38px; }
   .details-panel { display: none; }
   .join-card { padding: 32px 24px 28px; }
