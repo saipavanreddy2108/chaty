@@ -1120,6 +1120,44 @@ button:focus-visible, input:focus-visible {
 .join-card { border-radius: 14px; background: var(--bg-panel); }
 .join-orb { display: none; }
 
+.rail-button,
+.chat-actions button,
+.form-icon,
+.image-preview-remove,
+.mobile-back-btn,
+.settings-card button,
+.details-heading button {
+  min-width: 36px;
+  min-height: 36px;
+}
+.rail-button svg,
+.chat-actions svg,
+.form-icon svg,
+.send-button svg { display: block; }
+.send-button:disabled { cursor: not-allowed; opacity: 0.38; transform: none; box-shadow: none; }
+.chat-placeholder { max-width: 280px; }
+.chat-placeholder p { color: var(--text-secondary); }
+.date-divider { margin: 24px 0 18px; }
+.message-bubble small { color: var(--text-secondary); letter-spacing: 0.1px; }
+.mine .message-bubble small { color: rgba(255, 255, 255, 0.78); }
+.message-controls { gap: 10px; }
+.message-controls button { min-height: 24px; }
+.details-panel { box-shadow: inset 1px 0 var(--border-subtle); }
+.details-heading button:hover,
+.image-preview-remove:hover { color: var(--text-primary); }
+.settings-backdrop { padding: 24px; }
+.settings-card input:focus-visible,
+.join-card input:focus-visible,
+.message-form input:focus-visible { outline: none; }
+.auth-error { padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.empty-state { max-width: 230px; margin: 0 auto; }
+.status-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 1280px) {
+  .app-shell { grid-template-columns: 68px 300px minmax(380px, 1fr) 250px; }
+  .chat-content, .message-form-wrapper { max-width: 760px; }
+}
+
 @media (max-width: 1100px) {
   .app-shell { grid-template-columns: 76px 316px minmax(360px, 1fr); }
 }
@@ -1133,6 +1171,10 @@ button:focus-visible, input:focus-visible {
   .message-form-wrapper { width: calc(100% - 24px); margin-bottom: 12px; }
   .message-bubble { max-width: 86%; }
   .message-form { min-height: 50px; }
+  .chat-actions button { width: 38px; height: 38px; }
+  .details-panel { display: none; }
+  .join-card { padding: 32px 24px 28px; }
+  .join-card h1 { font-size: 30px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

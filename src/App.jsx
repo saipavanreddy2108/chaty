@@ -1,5 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Avatar } from './components/Avatar'
+import {
+  IconArrowLeft,
+  IconMessageSquare,
+  IconMoreVertical,
+  IconPaperclip,
+  IconPhone,
+  IconRefresh,
+  IconSearch,
+  IconSend,
+  IconSmile,
+  IconStar,
+  IconX
+} from './components/Icons'
 
 import { playChime, startRingtone, stopRingtone } from './utils/audio'
 import {
@@ -74,6 +87,18 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('chaty-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      setEmojiPickerOpen(false)
+      setLightboxImage(null)
+      setSettingsOpen(false)
+      if (editingMessageId) cancelEdit()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [editingMessageId])
 
   // WebSocket lifecycle with exponential backoff & keep-alive ping
   useEffect(() => {
@@ -629,9 +654,9 @@ function App() {
       <aside className="rail">
         <div className="brand-mark">c<span>·</span></div>
         <nav className="rail-nav" aria-label="Primary navigation">
-          <button className="rail-button active" aria-label="Messages" title="Messages">◒</button>
-          <button className="rail-button" aria-label="Explore" title="Explore" onClick={() => setActiveTab('Inbox')}>⌕</button>
-          <button className="rail-button" aria-label="Saved" title="Saved">▱</button>
+          <button className="rail-button active" aria-label="Messages" title="Messages"><IconMessageSquare size={19} /></button>
+          <button className="rail-button" aria-label="Explore" title="Search people" onClick={() => setActiveTab('Inbox')}><IconSearch size={19} /></button>
+          <button className="rail-button" aria-label="Saved" title="Saved messages"><IconStar size={19} /></button>
         </nav>
         <button className="rail-button profile-button" aria-label="Settings" title="Settings" onClick={openSettings}>
           <div className="profile-dot">{name.slice(0, 2).toUpperCase()}</div>
@@ -651,7 +676,7 @@ function App() {
             title="Refresh contacts"
             onClick={() => socket?.send(JSON.stringify({ type: 'ping' }))}
           >
-            ↻
+            <IconRefresh size={17} />
           </button>
         </header>
         
@@ -756,7 +781,7 @@ function App() {
                   aria-label="Back to contacts"
                   onClick={() => setMobileView('inbox')}
                 >
-                  ←
+                  <IconArrowLeft size={18} />
                 </button>
                 <Avatar person={selectedPerson} />
                 <div>
@@ -765,8 +790,8 @@ function App() {
                 </div>
               </div>
               <div className="chat-actions">
-                <button aria-label="Start audio call" title="Audio Call" onClick={startAudioCall}>⌁</button>
-                <button aria-label="Open settings" title="Settings" onClick={openSettings}>•••</button>
+                <button aria-label="Start audio call" title="Audio call" onClick={startAudioCall}><IconPhone size={18} /></button>
+                <button aria-label="Open settings" title="Settings" onClick={openSettings}><IconMoreVertical size={18} /></button>
               </div>
             </>
           ) : (
@@ -882,7 +907,7 @@ function App() {
                 <div className="image-preview-bar">
                   <img src={selectedImage} alt="Upload preview" />
                   <div className="image-preview-info">Photo ready to send</div>
-                  <button type="button" className="image-preview-remove" onClick={() => setSelectedImage(null)}>✕</button>
+                  <button type="button" className="image-preview-remove" aria-label="Remove image attachment" title="Remove attachment" onClick={() => setSelectedImage(null)}><IconX size={16} /></button>
                 </div>
               )}
 
@@ -930,7 +955,7 @@ function App() {
                   title="Attach Photo"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  ⊕
+                  <IconPaperclip size={19} />
                 </button>
 
                 <input
@@ -948,7 +973,7 @@ function App() {
                   title="Pick Emoji"
                   onClick={() => setEmojiPickerOpen((prev) => !prev)}
                 >
-                  ☺
+                  <IconSmile size={19} />
                 </button>
 
                 <button
@@ -957,7 +982,7 @@ function App() {
                   aria-label={editingMessageId ? 'Save edited message' : 'Send message'}
                   title="Send"
                 >
-                  ↑
+                  <IconSend size={18} />
                 </button>
               </form>
             </div>
@@ -971,7 +996,7 @@ function App() {
           <>
             <div className="details-heading">
               <p className="eyebrow">Details</p>
-              <button aria-label="Close details" onClick={() => setSelectedId(null)}>×</button>
+              <button aria-label="Close details" title="Close contact details" onClick={() => setSelectedId(null)}><IconX size={18} /></button>
             </div>
             <div className="detail-avatar">
               <Avatar person={selectedPerson} />
@@ -1026,7 +1051,7 @@ function App() {
                 <p className="eyebrow">Preferences</p>
                 <h2 id="settings-title">Settings</h2>
               </div>
-              <button aria-label="Close settings" onClick={() => setSettingsOpen(false)}>×</button>
+              <button aria-label="Close settings" title="Close settings" onClick={() => setSettingsOpen(false)}><IconX size={18} /></button>
             </div>
 
             {/* Theme Selector */}
