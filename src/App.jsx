@@ -1,149 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Sidebar } from './components/Sidebar'
+import { ConversationList } from './components/ConversationList'
+import { ChatHeader } from './components/ChatHeader'
+import { CallHud } from './components/CallHud'
+import { MessageStream } from './components/MessageStream'
+import { MessageComposer } from './components/MessageComposer'
+import { DetailsPanel } from './components/DetailsPanel'
+import { SettingsModal } from './components/SettingsModal'
+import { Lightbox } from './components/Lightbox'
+import { Toast } from './components/Toast'
+import { AuthScreen } from './components/AuthScreen'
+import { IconMessageSquare } from './components/Icons'
 
-function makePerson(user) {
-  return { ...user, avatar: (user.name || user.username || 'User').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() }
-}
+import { playChime, startRingtone, stopRingtone } from './utils/audio'
+import {
+  makePerson,
+  formatDuration,
+  compressImage,
+  EMOJI_CATEGORIES,
+  QUICK_REACTIONS
+} from './utils/helpers'
 
-function Avatar({ person, small = false }) {
-  return (
-    <div className={`avatar avatar-${person.color || 'coral'} ${small ? 'avatar-small' : ''}`}>
-      {person.avatar}
-      <span className={person.online ? 'presence online' : 'presence'} />
-    </div>
-  )
-}
-
-// Zero-asset Web Audio API sound engine
-let audioCtx = null
-function getAudioContext() {
-  if (!audioCtx && typeof window !== 'undefined') {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext
-    if (AudioContextClass) audioCtx = new AudioContextClass()
-  }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {})
-  }
-  return audioCtx
-}
-
-function playChime(type = 'receive') {
-  try {
-    const ctx = getAudioContext()
-    if (!ctx) return
-    const now = ctx.currentTime
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sine'
-    if (type === 'receive') {
-      osc.frequency.setValueAtTime(587.33, now)
-      osc.frequency.exponentialRampToValueAtTime(880, now + 0.12)
-      gain.gain.setValueAtTime(0.1, now)
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.start(now)
-      osc.stop(now + 0.25)
-    } else {
-      osc.frequency.setValueAtTime(440, now)
-      osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.08)
-      gain.gain.setValueAtTime(0.06, now)
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.start(now)
-      osc.stop(now + 0.15)
-    }
-  } catch {}
-}
-
-let ringInterval = null
-function startRingtone(isIncoming = false) {
-  stopRingtone()
-  const playPulse = () => {
-    try {
-      const ctx = getAudioContext()
-      if (!ctx) return
-      const now = ctx.currentTime
-      if (isIncoming) {
-        [523.25, 659.25, 783.99].forEach((freq, i) => {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.type = 'triangle'
-          osc.frequency.setValueAtTime(freq, now + i * 0.14)
-          gain.gain.setValueAtTime(0.09, now + i * 0.14)
-          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.14 + 0.28)
-          osc.connect(gain)
-          gain.connect(ctx.destination)
-          osc.start(now + i * 0.14)
-          osc.stop(now + i * 0.14 + 0.28)
-        })
-      } else {
-        [440, 480].forEach((freq) => {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.type = 'sine'
-          osc.frequency.setValueAtTime(freq, now)
-          gain.gain.setValueAtTime(0.07, now)
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.75)
-          osc.connect(gain)
-          gain.connect(ctx.destination)
-          osc.start(now)
-          osc.stop(now + 0.75)
-        })
-      }
-    } catch {}
-  }
-  playPulse()
-  ringInterval = setInterval(playPulse, isIncoming ? 2600 : 3000)
-}
-
-function stopRingtone() {
-  if (ringInterval) {
-    clearInterval(ringInterval)
-    ringInterval = null
-  }
-}
-
-// Client-side image compression for fast attachment sharing
-function compressImage(file, maxWidth = 900, maxHeight = 900, quality = 0.82) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const img = new Image()
-      img.onload = () => {
-        let { width, height } = img
-        if (width > maxWidth || height > maxHeight) {
-          if (width / height > maxWidth / maxHeight) {
-            height = Math.round((height * maxWidth) / width)
-            width = maxWidth
-          } else {
-            width = Math.round((width * maxHeight) / height)
-            height = maxHeight
-          }
-        }
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
-        resolve(canvas.toDataURL('image/jpeg', quality))
-      }
-      img.onerror = reject
-      img.src = event.target.result
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-// Emoji dictionary grouped by categories
-const EMOJI_CATEGORIES = [
-  { name: 'Smileys', icon: '😀', emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😋','😛','😜','🤪','😝','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','😌','😔','😪','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬'] },
-  { name: 'Gestures', icon: '👋', emojis: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦵','🦶','👂','👃','🧠','👀','👁️','👅','👄'] },
-  { name: 'Hearts', icon: '❤️', emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'] },
-  { name: 'Fun', icon: '🎉', emojis: ['🎉','🎊','🎈','🎂','🎁','🏆','🥇','🥈','🥉','⚽','🏀','🏈','⚾','🎾','🏐','🎱','🏓','🏸','🥊','🎯','🎮','🎲','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🎷','🎺','🎸','📱','💻','⌨️','🖥️','📷','📸','📹','💡','🔦','📖','📚','💰','💵','💸'] },
-  { name: 'Food', icon: '🍔', emojis: ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🥑','🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥙','🧆','🍜','🍝','🍣','🍱','🍦','🍧','🍨','🍩','🍪','🎂','🍰','🧁','🍫','🍬','🍭','☕','🍵','🧃','🥤','🍺','🍻','🥂','🍷'] }
-]
 
 function App() {
   const [account, setAccount] = useState(() => JSON.parse(localStorage.getItem('chaty-account') || 'null'))

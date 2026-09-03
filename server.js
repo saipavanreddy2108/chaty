@@ -135,7 +135,8 @@ websocketServer.on('connection', (socket) => {
       if (!sender) return
       const textContent = typeof data.text === 'string' ? data.text.trim().slice(0, 2000) : ''
       const imageContent = typeof data.image === 'string' && data.image.startsWith('data:image/') ? data.image : null
-      if (!textContent && !imageContent) return
+      const audioContent = typeof data.audio === 'string' && data.audio.startsWith('data:audio/') ? data.audio : null
+      if (!textContent && !imageContent && !audioContent) return
 
       const recipient = [...clients.entries()].find(([, user]) => user.id === data.to)
       const state = await getConversationState(sender.id, data.to)
@@ -150,6 +151,13 @@ websocketServer.on('connection', (socket) => {
         to: data.to,
         text: textContent,
         image: imageContent,
+        audio: audioContent,
+        replyTo: data.replyTo && typeof data.replyTo === 'object' ? {
+          id: String(data.replyTo.id || ''),
+          text: String(data.replyTo.text || '').slice(0, 150),
+          from: String(data.replyTo.from || '')
+        } : null,
+        reactions: {},
         time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true })
       }
 
@@ -163,12 +171,28 @@ websocketServer.on('connection', (socket) => {
       }
 
       try {
-        // Single persistent save (fixed duplicate saveMessage bug)
         await saveMessage(message)
         if (request) await createMessageRequest(request)
       } catch (error) {
         console.error('Message storage error:', error.message)
         socket.send(JSON.stringify({ type: 'error', message: 'Message delivered live but could not be saved.' }))
+      }
+    }
+
+    if (data.type === 'react-message' && typeof data.messageId === 'string' && typeof data.reaction === 'string') {
+      const sender = clients.get(socket)
+      if (!sender) return
+      const update = JSON.stringify({
+        type: 'message-reacted',
+        messageId: data.messageId,
+        reaction: data.reaction,
+        from: sender.id
+      })
+      socket.send(update)
+      for (const [recipientSocket, user] of clients) {
+        if (user.id === data.to && recipientSocket.readyState === 1) {
+          recipientSocket.send(update)
+        }
       }
     }
 
