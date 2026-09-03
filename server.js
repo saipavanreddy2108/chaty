@@ -65,7 +65,8 @@ const httpServer = createServer((request, response) => {
     }).catch(() => sendJson(response, 400, { error: 'Invalid request.' }))
     return
   }
-  const requestedPath = request.url === '/' ? '/index.html' : request.url.split('?')[0]
+  const requestedPathname = new URL(request.url, 'http://localhost').pathname
+  const requestedPath = requestedPathname === '/' ? '/index.html' : requestedPathname
   const filePath = join(root, 'dist', requestedPath)
   const fallbackPath = join(root, 'dist', 'index.html')
   const pathToServe = existsSync(filePath) ? filePath : fallbackPath
