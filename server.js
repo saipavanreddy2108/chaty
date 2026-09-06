@@ -210,7 +210,10 @@ websocketServer.on('connection', (socket) => {
       const user = clients.get(socket)
       if (!user) return
       const onlineIds = new Set([...clients.values()].map((person) => person.id))
-      const foundUsers = await getUsersForUser(user.id, data.query.trim().slice(0, 50))
+      const searchQuery = data.query.trim().slice(0, 50)
+      const foundUsers = searchQuery
+        ? await getUsersForUser(user.id, searchQuery)
+        : await getUsersWithConversations(user.id)
       socket.send(JSON.stringify({
         type: 'users',
         users: foundUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) })),
