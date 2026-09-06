@@ -211,7 +211,12 @@ websocketServer.on('connection', (socket) => {
       if (!user) return
       const onlineIds = new Set([...clients.values()].map((person) => person.id))
       const foundUsers = await getUsersForUser(user.id, data.query.trim().slice(0, 50))
-      socket.send(JSON.stringify({ type: 'users', users: foundUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) })), selfId: user.id }))
+      socket.send(JSON.stringify({
+        type: 'users',
+        users: foundUsers.filter((person) => person.id !== user.id).map((person) => ({ ...person, online: onlineIds.has(person.id) })),
+        selfId: user.id,
+        searchRequestId: data.requestId
+      }))
     }
 
     if (data.type === 'edit-message' && typeof data.messageId === 'string' && typeof data.text === 'string') {

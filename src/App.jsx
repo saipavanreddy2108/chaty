@@ -79,6 +79,7 @@ function App() {
   const pendingIceCandidatesRef = useRef([])
   const remoteAudioRef = useRef(null)
   const selectedIdRef = useRef(null)
+  const latestSearchRef = useRef({ requestId: 0, query: '' })
   const mutedIdsRef = useRef([])
   const isNearBottomRef = useRef(true)
   const [newMessageCount, setNewMessageCount] = useState(0)
@@ -165,6 +166,8 @@ function App() {
         try { data = JSON.parse(event.data) } catch { return }
 
         if (data.type === 'users') {
+          if (data.searchRequestId && data.searchRequestId !== latestSearchRef.current.requestId) return
+          if (!data.searchRequestId && latestSearchRef.current.query) return
           const nextPeople = data.users.filter((person) => person.id !== data.selfId).map(makePerson)
           setPeople(nextPeople)
           setSelectedId((current) => current || nextPeople[0]?.id || null)
@@ -245,7 +248,10 @@ function App() {
   // User search query dispatch
   useEffect(() => {
     if (socket?.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: 'search-users', query }))
+      const normalizedSearchQuery = query.trim().slice(0, 50)
+      const requestId = latestSearchRef.current.requestId + 1
+      latestSearchRef.current = { requestId, query: normalizedSearchQuery }
+      socket.send(JSON.stringify({ type: 'search-users', query: normalizedSearchQuery, requestId }))
     }
   }, [socket, query])
 
