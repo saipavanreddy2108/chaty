@@ -6,6 +6,7 @@ import {
   IconMoreVertical,
   IconPaperclip,
   IconPhone,
+  IconVideo,
   IconRefresh,
   IconSearch,
   IconSend,
@@ -13,6 +14,10 @@ import {
   IconInfo,
   IconX
 } from './components/Icons'
+
+import { VoiceCallScreen } from './components/call/VoiceCallScreen'
+import { VideoCallScreen } from './components/call/VideoCallScreen'
+import { IncomingCallModal } from './components/call/IncomingCallModal'
 
 import { playChime, startRingtone, stopRingtone } from './utils/audio'
 import {
@@ -22,6 +27,8 @@ import {
   EMOJI_CATEGORIES,
   QUICK_REACTIONS
 } from './utils/helpers'
+
+
 
 
 function App() {
@@ -68,11 +75,14 @@ function App() {
   const isTypingSentRef = useRef(false)
   const typingTimeoutRef = useRef(null)
 
-  // WebRTC Audio Calls
+  // WebRTC Calls (Voice & Video)
   const [call, setCall] = useState(null)
   const [callTimer, setCallTimer] = useState(0)
   const [micMuted, setMicMuted] = useState(false)
   const [speakerMuted, setSpeakerMuted] = useState(false)
+  const [cameraOff, setCameraOff] = useState(false)
+  const [localStream, setLocalStream] = useState(null)
+  const [remoteStream, setRemoteStream] = useState(null)
   const peerConnectionRef = useRef(null)
   const localStreamRef = useRef(null)
   const pendingOfferRef = useRef(null)
@@ -203,7 +213,12 @@ function App() {
         // WebRTC Signaling
         if (data.type === 'call-offer') {
           pendingOfferRef.current = data.offer
-          setCall({ status: 'incoming', peerId: data.from, peerName: data.fromName })
+          setCall({
+            status: 'incoming',
+            type: data.callType || 'voice',
+            peerId: data.from,
+            peerName: data.fromName
+          })
           startRingtone(true)
         }
         if (data.type === 'call-answer') handleCallAnswer(data.answer)
@@ -425,7 +440,7 @@ function App() {
     setEmojiPickerOpen(false)
   }
 
-  // WebRTC Audio Calls
+  // WebRTC Audio and Video Calls
   function createPeerConnection(peerId) {
     const peerConnection = new RTCPeerConnection({
       iceServers: [
@@ -439,7 +454,9 @@ function App() {
       }
     }
     peerConnection.ontrack = (event) => {
-      if (remoteAudioRef.current) remoteAudioRef.current.srcObject = event.streams[0]
+      const stream = event.streams[0]
+      if (remoteAudioRef.current) remoteAudioRef.current.srcObject = stream
+      setRemoteStream(stream)
     }
     peerConnection.onconnectionstatechange = () => {
       if (['failed', 'disconnected', 'closed'].includes(peerConnection.connectionState)) {
@@ -458,7 +475,7 @@ function App() {
     await peerConnection.setRemoteDescription(answer)
     for (const candidate of pendingIceCandidatesRef.current) await peerConnection.addIceCandidate(candidate)
     pendingIceCandidatesRef.current = []
-    setCall((current) => current ? { ...current, status: 'connected' } : current)
+    setCall((current) => (current ? { ...current, status: 'connected' } : current))
   }
 
   async function handleCallIce(candidate) {
@@ -505,20 +522,93 @@ function App() {
     }
   }
 
-  async function startAudioCall() {
+  function toggleMic() {
+    setMicMuted((prev) => {
+      const next = !prev
+      if (localStreamRef.current) {
+        localStreamRef.current.getAudioTracks().forEach((track) => {
+          track.enabled = !next
+        })
+      }
+      return next
+    })
+  }
+
+  function toggleSpeaker() {
+    setSpeakerMuted((prev) => {
+      const next = !prev
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.muted = next
+      }
+      return next
+    })
+  }
+
+  function toggleCamera() {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach((track) => {
+        track.enabled = !track.enabled
+      })
+      setCameraOff((prev) => !prev)
+    }
+  }
+
+  async function switchCamera() {
+    if (!localStreamRef.current || call?.type !== 'video') return
+    try {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0]
+      if (!videoTrack) return
+      const currentFacing = videoTrack.getSettings().facingMode || 'user'
+      const nextFacing = currentFacing === 'user' ? 'environment' : 'user'
+
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: nextFacing } }
+      })
+      const newTrack = newStream.getVideoTracks()[0]
+      if (peerConnectionRef.current) {
+        const sender = peerConnectionRef.current.getSenders().find((s) => s.track && s.track.kind === 'video')
+        if (sender) sender.replaceTrack(newTrack)
+      }
+      localStreamRef.current.removeTrack(videoTrack)
+      videoTrack.stop()
+      localStreamRef.current.addTrack(newTrack)
+      setLocalStream(new MediaStream(localStreamRef.current.getTracks()))
+    } catch (e) {
+      console.warn('Could not switch camera facing mode:', e)
+    }
+  }
+
+  async function startCall(callType = 'voice') {
     if (!selectedPerson || socket?.readyState !== WebSocket.OPEN || call) return
     setMicMuted(false)
     setSpeakerMuted(false)
+    setCameraOff(false)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      const constraints = {
+        audio: true,
+        video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false
+      }
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
       localStreamRef.current = stream
+      setLocalStream(stream)
       syncCallAudioState()
       const peerConnection = createPeerConnection(selectedPerson.id)
       stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
       const offer = await peerConnection.createOffer()
       await peerConnection.setLocalDescription(offer)
-      socket.send(JSON.stringify({ type: 'call-offer', to: selectedPerson.id, fromName: name, offer }))
-      setCall({ status: 'calling', peerId: selectedPerson.id, peerName: selectedPerson.name })
+      socket.send(JSON.stringify({
+        type: 'call-offer',
+        to: selectedPerson.id,
+        fromName: name,
+        callType,
+        offer
+      }))
+      setCall({
+        status: 'calling',
+        type: callType,
+        peerId: selectedPerson.id,
+        peerName: selectedPerson.name
+      })
       startRingtone(false)
 
       // 30s call timeout if no answer
@@ -527,30 +617,49 @@ function App() {
         endCall(true)
         alert(`${selectedPerson.name} is not answering.`)
       }, 30000)
-    } catch {
-      setCall({ status: 'error', peerId: selectedPerson.id, peerName: selectedPerson.name })
+    } catch (err) {
+      console.error('Call media error:', err)
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert(`${callType === 'video' ? 'Camera and microphone' : 'Microphone'} access was denied. Please allow permissions in your browser settings to make calls.`)
+      } else {
+        alert(`Could not start ${callType} call: ${err.message}`)
+      }
+      setCall({ status: 'error', type: callType, peerId: selectedPerson.id, peerName: selectedPerson.name })
+      setTimeout(() => endCall(false), 2000)
     }
   }
 
-  async function acceptAudioCall() {
+  async function acceptCall() {
     if (!call?.peerId || !pendingOfferRef.current) return
+    const callType = call.type || 'voice'
     try {
       stopRingtone()
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      const constraints = {
+        audio: true,
+        video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false
+      }
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
       localStreamRef.current = stream
+      setLocalStream(stream)
       syncCallAudioState()
       const peerConnection = createPeerConnection(call.peerId)
       stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
       await peerConnection.setRemoteDescription(pendingOfferRef.current)
-      for (const candidate of pendingIceCandidatesRef.current) await peerConnection.addIceCandidate(candidate)
+      for (const candidate of pendingIceCandidatesRef.current) {
+        await peerConnection.addIceCandidate(candidate)
+      }
       pendingIceCandidatesRef.current = []
       const answer = await peerConnection.createAnswer()
       await peerConnection.setLocalDescription(answer)
-      socket.send(JSON.stringify({ type: 'call-answer', to: call.peerId, answer }))
-      socket.send(JSON.stringify({ type: 'call-accepted', to: call.peerId }))
+      socket.send(JSON.stringify({ type: 'call-answer', to: call.peerId, answer, callType }))
+      socket.send(JSON.stringify({ type: 'call-accepted', to: call.peerId, callType }))
       pendingOfferRef.current = null
-      setCall({ ...call, status: 'connected' })
-    } catch {
+      setCall((current) => (current ? { ...current, status: 'connected' } : null))
+    } catch (err) {
+      console.error('Accept call media error:', err)
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert(`${callType === 'video' ? 'Camera and microphone' : 'Microphone'} access was denied.`)
+      }
       endCall(true)
     }
   }
@@ -591,11 +700,14 @@ function App() {
     localStreamRef.current?.getTracks().forEach((track) => track.stop())
     peerConnectionRef.current = null
     localStreamRef.current = null
+    setLocalStream(null)
+    setRemoteStream(null)
     pendingOfferRef.current = null
     pendingIceCandidatesRef.current = []
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
     setMicMuted(false)
     setSpeakerMuted(false)
+    setCameraOff(false)
     clearCallTimer()
     setCall(null)
   }
@@ -689,6 +801,7 @@ function App() {
   }
 
   const isPeerTyping = selectedPerson && typingUsers[selectedPerson.id]
+  const callPeer = people.find((p) => p.id === call?.peerId) || { name: call?.peerName, username: 'user' }
 
   return (
     <main className={`app-shell ${detailsOpen ? '' : 'details-hidden'}`}>
@@ -841,7 +954,8 @@ function App() {
                 </div>
               </div>
               <div className="chat-actions">
-                <button aria-label="Start audio call" title="Audio call" onClick={startAudioCall}><IconPhone size={18} /></button>
+                <button aria-label="Start voice call" title="Voice call" onClick={() => startCall('voice')}><IconPhone size={18} /></button>
+                <button aria-label="Start video call" title="Video call" onClick={() => startCall('video')}><IconVideo size={18} /></button>
                 <button aria-label="Toggle contact details" title="Toggle contact details" onClick={() => setDetailsOpen((current) => !current)}><IconInfo size={18} /></button>
                 <button aria-label="Open settings" title="Settings" onClick={openSettings}><IconMoreVertical size={18} /></button>
               </div>
@@ -922,39 +1036,7 @@ function App() {
               )}
             </div>
 
-            {/* Audio Call Banner */}
-            {call && (
-              <div className={`call-panel call-${call.status}`}>
-                <strong>
-                  {call.status === 'incoming'
-                    ? `Incoming audio call from ${call.peerName}...`
-                    : call.status === 'calling'
-                    ? `Calling ${call.peerName}...`
-                    : call.status === 'connected'
-                    ? `Live audio call with ${call.peerName} • ${formatCallDuration(callTimer)}`
-                    : 'Audio call could not connect'}
-                </strong>
-                {call.status === 'incoming' && (
-                  <>
-                    <button type="button" onClick={acceptAudioCall}>Accept</button>
-                    <button type="button" className="call-hangup-btn" onClick={rejectAudioCall}>Decline</button>
-                  </>
-                )}
-                {call.status === 'connected' && (
-                  <div className="call-audio-controls">
-                    <button type="button" className={micMuted ? 'call-toggle-muted' : ''} onClick={() => setMicMuted((value) => !value)}>
-                      {micMuted ? 'Mic off' : 'Mic on'}
-                    </button>
-                    <button type="button" className={speakerMuted ? 'call-toggle-muted' : ''} onClick={() => setSpeakerMuted((value) => !value)}>
-                      {speakerMuted ? 'Speaker off' : 'Speaker on'}
-                    </button>
-                  </div>
-                )}
-                {call.status !== 'error' && call.status !== 'incoming' && (
-                  <button type="button" className="call-hangup-btn" onClick={() => endCall(true)}>Hang up</button>
-                )}
-              </div>
-            )}
+            {/* Audio stream playback element */}
             <audio ref={remoteAudioRef} autoPlay />
 
             {/* Message Composer Form */}
@@ -1064,11 +1146,14 @@ function App() {
               <button onClick={() => toggleMute(selectedPerson.id)}>
                 <span aria-hidden="true">◌</span> {mutedIds.includes(selectedPerson.id) ? 'Unmute' : 'Mute'}
               </button>
-              <button onClick={startAudioCall}>
-                <span>⌁</span> Call
+              <button onClick={() => startCall('voice')} title="Voice call">
+                <IconPhone size={14} /> Call
+              </button>
+              <button onClick={() => startCall('video')} title="Video call">
+                <IconVideo size={14} /> Video
               </button>
               <button onClick={openSettings}>
-                <span>i</span> Info
+                <IconInfo size={14} /> Info
               </button>
             </div>
             <div className="detail-section">
@@ -1189,6 +1274,51 @@ function App() {
             <img src={lightboxImage} alt="Fullscreen preview" />
           </div>
         </div>
+      )}
+      {/* Full-Screen Voice Call Screen */}
+      {call && call.status !== 'idle' && call.status !== 'incoming' && call.type === 'voice' && (
+        <VoiceCallScreen
+          call={call}
+          peer={callPeer}
+          callTimer={callTimer}
+          formatDuration={formatCallDuration}
+          micMuted={micMuted}
+          onToggleMic={toggleMic}
+          speakerMuted={speakerMuted}
+          onToggleSpeaker={toggleSpeaker}
+          onEndCall={() => endCall(true)}
+        />
+      )}
+
+      {/* Full-Screen Video Call Screen */}
+      {call && call.status !== 'idle' && call.status !== 'incoming' && call.type === 'video' && (
+        <VideoCallScreen
+          call={call}
+          peer={callPeer}
+          myAccount={account}
+          localStream={localStream}
+          remoteStream={remoteStream}
+          callTimer={callTimer}
+          formatDuration={formatCallDuration}
+          micMuted={micMuted}
+          onToggleMic={toggleMic}
+          speakerMuted={speakerMuted}
+          onToggleSpeaker={toggleSpeaker}
+          cameraOff={cameraOff}
+          onToggleCamera={toggleCamera}
+          onSwitchCamera={switchCamera}
+          onEndCall={() => endCall(true)}
+        />
+      )}
+
+      {/* Incoming Call Notification Overlay */}
+      {call && call.status === 'incoming' && (
+        <IncomingCallModal
+          call={call}
+          peer={callPeer}
+          onAccept={acceptCall}
+          onDecline={rejectAudioCall}
+        />
       )}
     </main>
   )

@@ -396,3 +396,31 @@ export function IconChevronUp({ size = 16, className = '', ...props }) {
     </svg>
   )
 }
+
+export function IconVideo({ size = 20, className = '', ...props }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+    </svg>
+  )
+}
+
+export function IconVideoOff({ size = 20, className = '', ...props }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  )
+}
+
+export function IconCameraSwitch({ size = 20, className = '', ...props }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8c0 1.846.626 3.545 1.68 4.9M4 14c0 4.418 3.582 8 8 8s8-3.582 8-8c0-1.846-.626-3.545-1.68-4.9" />
+      <polyline points="1 10 4 14 7 10" />
+      <polyline points="23 14 20 10 17 14" />
+    </svg>
+  )
+}
