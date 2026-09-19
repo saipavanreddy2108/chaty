@@ -12,7 +12,13 @@ import {
   IconSend,
   IconSmile,
   IconInfo,
-  IconX
+  IconX,
+  IconCheckCheck,
+  IconSparkles,
+  IconLock,
+  IconShield,
+  IconUsers,
+  IconSettings
 } from './components/Icons'
 
 import { VoiceCallScreen } from './components/call/VoiceCallScreen'
@@ -180,7 +186,7 @@ function App() {
           if (!data.searchRequestId && latestSearchRef.current.query) return
           const nextPeople = data.users.filter((person) => person.id !== data.selfId).map(makePerson)
           setPeople(nextPeople)
-          setSelectedId((current) => current || nextPeople[0]?.id || null)
+          setSelectedId((current) => (current && nextPeople.some((p) => p.id === current) ? current : null))
         }
         if (data.type === 'history') {
           setMessages(data.messages)
@@ -270,7 +276,7 @@ function App() {
     }
   }, [socket, query])
 
-  const selectedPerson = people.find((person) => person.id === selectedId) || people[0]
+  const selectedPerson = selectedId ? people.find((person) => person.id === selectedId) || null : null
   useEffect(() => { selectedIdRef.current = selectedId }, [selectedId])
   const normalizedQuery = query.trim().toLowerCase()
   const filteredPeople = useMemo(() => {
@@ -804,7 +810,7 @@ function App() {
   const callPeer = people.find((p) => p.id === call?.peerId) || { name: call?.peerName, username: 'user' }
 
   return (
-    <main className={`app-shell ${detailsOpen ? '' : 'details-hidden'}`}>
+    <main className={`app-shell ${detailsOpen && selectedPerson ? '' : 'details-hidden'}`}>
       {/* Hidden file input for attachments */}
       <input
         type="file"
@@ -816,13 +822,48 @@ function App() {
 
       {/* Rail Nav Sidebar */}
       <aside className="rail">
-        <div className="brand-mark">c<span>·</span></div>
+        <div
+          className="brand-mark"
+          onClick={() => { setSelectedId(null); setMobileView('inbox') }}
+          role="button"
+          tabIndex={0}
+          title="Chaty - Return to Welcome"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedId(null); setMobileView('inbox') } }}
+        >
+          c<span>·</span>
+        </div>
         <nav className="rail-nav" aria-label="Primary navigation">
-          <button className="rail-button active" aria-label="Messages" title="Messages" onClick={() => setMobileView('inbox')}><IconMessageSquare size={19} /></button>
-          <button className="rail-button" aria-label="Explore" title="Search people" onClick={() => { setActiveTab('Inbox'); setMobileView('inbox'); searchInputRef.current?.focus() }}><IconSearch size={19} /></button>
+          <button
+            className={`rail-button ${!selectedPerson && mobileView === 'inbox' ? 'active' : ''}`}
+            aria-label="Messages"
+            title="All Messages"
+            onClick={() => { setSelectedId(null); setMobileView('inbox') }}
+          >
+            <IconMessageSquare size={20} />
+          </button>
+          <button
+            className="rail-button"
+            aria-label="Explore"
+            title="Search people"
+            onClick={() => {
+              setActiveTab('Inbox')
+              setMobileView('inbox')
+              searchInputRef.current?.focus()
+            }}
+          >
+            <IconSearch size={20} />
+          </button>
         </nav>
-        <button className="rail-button profile-button" aria-label="Settings" title="Settings" onClick={openSettings}>
-          <div className="profile-dot">{name.slice(0, 2).toUpperCase()}</div>
+        <button
+          className="rail-button profile-button"
+          aria-label="Settings"
+          title={`Signed in as ${name || 'User'} - Settings`}
+          onClick={openSettings}
+        >
+          <div className="profile-dot">
+            {(name || 'U').slice(0, 2).toUpperCase()}
+            <span className={`profile-status-indicator ${connected ? 'online' : 'offline'}`} />
+          </div>
         </button>
       </aside>
 
@@ -849,9 +890,20 @@ function App() {
             ref={searchInputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search people"
+            placeholder="Search people..."
             aria-label="Search people"
           />
+          {query && (
+            <button
+              className="search-clear-btn"
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              title="Clear search"
+              type="button"
+            >
+              <IconX size={14} />
+            </button>
+          )}
         </div>
 
         <div className="tabs" role="tablist">
@@ -866,7 +918,7 @@ function App() {
         <div className="conversation-list">
           {filteredPeople.length > 0 && (
             <>
-              <div className="conversation-section-header">People</div>
+              <div className="conversation-section-header">Direct Messages</div>
               {filteredPeople.map((person) => (
                 <button
                   key={person.id}
@@ -874,20 +926,29 @@ function App() {
                   onClick={() => {
                     setSelectedId(person.id)
                     setMobileView('chat')
+                    setDetailsOpen(true)
                     setUnreadCounts((current) => ({ ...current, [person.id]: 0 }))
                   }}
                 >
-                  <Avatar person={person} small />
+                  <Avatar person={person} size="sm" />
                   <span className="conversation-copy">
-                    <strong>{person.name}</strong>
-                    <span>
-                      {typingUsers[person.id] ? 'Typing...' : person.online ? 'Online now · Start chatting' : 'Offline'}
+                    <div className="conversation-top-row">
+                      <strong className="contact-name">{person.name}</strong>
+                      <span className="conversation-time">
+                        {person.online ? 'Active' : ''}
+                      </span>
+                    </div>
+                    <span className="conversation-preview">
+                      {typingUsers[person.id] ? (
+                        <span className="typing-preview-text">Typing...</span>
+                      ) : person.online ? (
+                        'Online now · Start chatting'
+                      ) : (
+                        'Offline'
+                      )}
                     </span>
                   </span>
                   {unreadCounts[person.id] > 0 && <span className="unread-count">{unreadCounts[person.id]}</span>}
-                  <span className="conversation-meta">
-                    <small>{person.online ? 'live' : ''}</small>
-                  </span>
                 </button>
               ))}
             </>
@@ -905,15 +966,16 @@ function App() {
                     onClick={() => {
                       setSelectedId(request.from)
                       setMobileView('chat')
+                      setDetailsOpen(true)
                     }}
                   >
-                    <Avatar person={requester} small />
+                    <Avatar person={requester} size="sm" />
                     <span className="conversation-copy">
-                      <strong>{requester.name}</strong>
-                      <span>Wants to connect • {requester.online ? 'Online' : 'Offline'}</span>
-                    </span>
-                    <span className="conversation-meta">
-                      <small>new</small>
+                      <div className="conversation-top-row">
+                        <strong className="contact-name">{requester.name}</strong>
+                        <span className="conversation-badge-new">New</span>
+                      </div>
+                      <span className="conversation-preview">Wants to connect • {requester.online ? 'Online' : 'Offline'}</span>
                     </span>
                   </button>
                 ) : null
@@ -922,7 +984,29 @@ function App() {
           )}
 
           {filteredPeople.length === 0 && messageRequests.filter((r) => r.status === 'pending').length === 0 && (
-            <p className="empty-state">{people.length ? 'No people match your search.' : 'Open Chaty in another browser to chat with someone.'}</p>
+            <div className="inbox-empty-state">
+              <div className="inbox-empty-icon">
+                <IconMessageSquare size={26} />
+              </div>
+              <h4>{query ? 'No contacts found' : 'No conversations yet'}</h4>
+              <p>
+                {query
+                  ? `No people matched "${query}". Check spelling or try a different search.`
+                  : 'Start a conversation by finding someone or exploring available contacts.'}
+              </p>
+              {query ? (
+                <button className="inbox-clear-btn" onClick={() => setQuery('')}>
+                  Clear search
+                </button>
+              ) : (
+                <button
+                  className="inbox-clear-btn"
+                  onClick={() => searchInputRef.current?.focus()}
+                >
+                  Find People
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -936,40 +1020,55 @@ function App() {
 
       {/* Main Chat Panel */}
       <section className={`chat-panel ${mobileView === 'inbox' ? 'mobile-hide' : ''}`}>
-        <header className="chat-header">
-          {selectedPerson ? (
-            <>
+        {selectedPerson ? (
+          <>
+            <header className="chat-header">
               <div className="chat-person">
                 <button
                   className="mobile-back-btn"
                   aria-label="Back to contacts"
-                  onClick={() => setMobileView('inbox')}
+                  title="Back to contacts"
+                  onClick={() => {
+                    setMobileView('inbox')
+                    setSelectedId(null)
+                  }}
                 >
                   <IconArrowLeft size={18} />
                 </button>
-                <Avatar person={selectedPerson} />
-                <div>
+                <Avatar person={selectedPerson} size="md" />
+                <div className="chat-person-meta">
                   <h2>{selectedPerson.name}</h2>
-                  <p>{isPeerTyping ? 'Typing...' : selectedPerson.online ? 'Active now' : 'Offline'}</p>
+                  <p className={selectedPerson.online ? 'active-status' : 'offline-status'}>
+                    {isPeerTyping ? (
+                      <span className="typing-pulse">Typing...</span>
+                    ) : selectedPerson.online ? (
+                      <><span className="status-dot online" /> Active now</>
+                    ) : (
+                      <><span className="status-dot offline" /> Offline</>
+                    )}
+                  </p>
                 </div>
               </div>
               <div className="chat-actions">
-                <button aria-label="Start voice call" title="Voice call" onClick={() => startCall('voice')}><IconPhone size={18} /></button>
-                <button aria-label="Start video call" title="Video call" onClick={() => startCall('video')}><IconVideo size={18} /></button>
-                <button aria-label="Toggle contact details" title="Toggle contact details" onClick={() => setDetailsOpen((current) => !current)}><IconInfo size={18} /></button>
-                <button aria-label="Open settings" title="Settings" onClick={openSettings}><IconMoreVertical size={18} /></button>
+                <button aria-label="Start voice call" title="Voice call" onClick={() => startCall('voice')}>
+                  <IconPhone size={18} />
+                </button>
+                <button aria-label="Start video call" title="Video call" onClick={() => startCall('video')}>
+                  <IconVideo size={18} />
+                </button>
+                <button
+                  aria-label="Toggle contact details"
+                  title="Contact details"
+                  className={detailsOpen ? 'active' : ''}
+                  onClick={() => setDetailsOpen((current) => !current)}
+                >
+                  <IconInfo size={18} />
+                </button>
+                <button aria-label="Open settings" title="Settings" onClick={openSettings}>
+                  <IconMoreVertical size={18} />
+                </button>
               </div>
-            </>
-          ) : (
-            <div className="chat-placeholder">
-              <span>✦</span>
-              <p>Select a contact to start messaging</p>
-            </div>
-          )}
-        </header>
-
-        {selectedPerson && (
-          <>
+            </header>
             <div className="chat-content" ref={chatContentRef} onScroll={handleChatScroll}>
               <div className="profile-intro">
                 <Avatar person={selectedPerson} />
@@ -1012,7 +1111,14 @@ function App() {
                           <button type="button" onClick={() => removeMessage(item)}>Delete</button>
                         </span>
                       )}
-                      <small>{item.time}</small>
+                      <div className="message-meta-row">
+                        <small>{item.time}</small>
+                        {item.from === 'me' && !item.deleted && (
+                          <span className="message-read-receipt" title="Sent & Delivered">
+                            <IconCheckCheck size={13} />
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1126,59 +1232,138 @@ function App() {
               </form>
             </div>
           </>
+        ) : (
+          <div className="welcome-screen">
+            <div className="welcome-ambient-glow" />
+            <div className="welcome-card">
+              <div className="welcome-sparkle-pill">
+                <IconSparkles size={15} />
+                <span>Encrypted & Real-Time</span>
+              </div>
+              <h1 className="welcome-headline">
+                Welcome back{name ? `, ${name}` : ''}!
+              </h1>
+              <p className="welcome-lead">
+                Start a conversation with your friends, connect with peers, or launch crystal-clear voice and video calls.
+              </p>
+
+              <div className="welcome-cta-group">
+                <button
+                  className="welcome-cta-btn primary"
+                  onClick={() => searchInputRef.current?.focus()}
+                >
+                  <IconSearch size={16} />
+                  <span>Find someone</span>
+                </button>
+                {people.length > 0 && (
+                  <button
+                    className="welcome-cta-btn secondary"
+                    onClick={() => {
+                      const first = people[0]
+                      if (first) {
+                        setSelectedId(first.id)
+                        setMobileView('chat')
+                        setDetailsOpen(true)
+                      }
+                    }}
+                  >
+                    <IconMessageSquare size={16} />
+                    <span>Start Chat</span>
+                  </button>
+                )}
+                <button
+                  className="welcome-cta-btn ghost"
+                  onClick={() => {
+                    setActiveTab('Inbox')
+                    searchInputRef.current?.focus()
+                  }}
+                >
+                  <IconUsers size={16} />
+                  <span>Explore</span>
+                </button>
+              </div>
+
+              <div className="welcome-highlights">
+                <div className="highlight-item">
+                  <div className="highlight-icon"><IconShield size={18} /></div>
+                  <div className="highlight-body">
+                    <strong>End-to-End Privacy</strong>
+                    <p>Encrypted messaging, media sharing, and call signaling.</p>
+                  </div>
+                </div>
+                <div className="highlight-item">
+                  <div className="highlight-icon"><IconPhone size={18} /></div>
+                  <div className="highlight-body">
+                    <strong>Crystal Voice & Video</strong>
+                    <p>Instant peer-to-peer WebRTC calls with ringtone alerts.</p>
+                  </div>
+                </div>
+                <div className="highlight-item">
+                  <div className="highlight-icon"><IconSparkles size={18} /></div>
+                  <div className="highlight-body">
+                    <strong>Live Social Presence</strong>
+                    <p>Real-time typing status, unread badges, and active dots.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </section>
 
       {/* Details Side Panel */}
-      <aside className={`details-panel ${detailsOpen ? '' : 'details-collapsed'}`} aria-hidden={!detailsOpen}>
-        {selectedPerson ? (
-          <>
-            <div className="details-heading">
-              <p className="eyebrow">Details</p>
-              <button aria-label="Close details" title="Close contact details" onClick={() => setDetailsOpen(false)}><IconX size={18} /></button>
-            </div>
-            <div className="detail-avatar">
-              <Avatar person={selectedPerson} />
-            </div>
-            <h2>{selectedPerson.name}</h2>
-            <p className="detail-handle">{selectedPerson.online ? 'Online now' : 'Currently offline'}</p>
-            <div className="detail-actions">
-              <button onClick={() => toggleMute(selectedPerson.id)}>
-                <span aria-hidden="true">◌</span> {mutedIds.includes(selectedPerson.id) ? 'Unmute' : 'Mute'}
-              </button>
-              <button onClick={() => startCall('voice')} title="Voice call">
-                <IconPhone size={14} /> Call
-              </button>
-              <button onClick={() => startCall('video')} title="Video call">
-                <IconVideo size={14} /> Video
-              </button>
-              <button onClick={openSettings}>
-                <IconInfo size={14} /> Info
-              </button>
-            </div>
-            <div className="detail-section">
-              <div className="detail-row">
-                <span>Media, links & docs</span><b>0</b>
-              </div>
-              <div className="detail-row">
-                <span>Privacy & security</span><b>Protected</b>
-              </div>
-            </div>
-            <div className="shared-note">
-              <span>✦</span>
-              <div>
-                <strong>Live status</strong>
-                <p>Real-time delivery with auto-reconnect and instant audio calls.</p>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="details-empty">
-            <span>✦</span>
-            <p>Select a contact to view their profile details.</p>
+      {selectedPerson && (
+        <aside className={`details-panel ${detailsOpen ? '' : 'details-collapsed'}`} aria-hidden={!detailsOpen}>
+          <div className="details-heading">
+            <p className="eyebrow">Contact Details</p>
+            <button aria-label="Close details" title="Close contact details" onClick={() => setDetailsOpen(false)}>
+              <IconX size={18} />
+            </button>
           </div>
-        )}
-      </aside>
+          <div className="detail-avatar">
+            <Avatar person={selectedPerson} size="xl" />
+          </div>
+          <h2>{selectedPerson.name}</h2>
+          <p className="detail-handle">
+            <span className={`status-pill ${selectedPerson.online ? 'online' : 'offline'}`}>
+              <span className="status-dot-sm" />
+              {selectedPerson.online ? 'Online now' : 'Currently offline'}
+            </span>
+          </p>
+          <div className="detail-actions">
+            <button onClick={() => toggleMute(selectedPerson.id)} title={mutedIds.includes(selectedPerson.id) ? 'Unmute contact' : 'Mute contact'}>
+              <span aria-hidden="true">◌</span> {mutedIds.includes(selectedPerson.id) ? 'Unmute' : 'Mute'}
+            </button>
+            <button onClick={() => startCall('voice')} title="Voice call">
+              <IconPhone size={14} /> Call
+            </button>
+            <button onClick={() => startCall('video')} title="Video call">
+              <IconVideo size={14} /> Video
+            </button>
+            <button onClick={openSettings} title="Settings & Info">
+              <IconSettings size={14} /> Info
+            </button>
+          </div>
+          <div className="detail-section">
+            <div className="detail-row">
+              <span>Media & photos</span><b>{visibleMessages.filter((m) => m.image).length}</b>
+            </div>
+            <div className="detail-row">
+              <span>Messages exchanged</span><b>{visibleMessages.length}</b>
+            </div>
+            <div className="detail-row">
+              <span>Privacy & security</span><b className="tag-protected">Protected</b>
+            </div>
+          </div>
+          <div className="shared-note">
+            <IconShield size={16} />
+            <div>
+              <strong>Encrypted Connection</strong>
+              <p>Real-time delivery with auto-reconnect and instant audio calls.</p>
+            </div>
+          </div>
+        </aside>
+      )}
 
       {/* Settings Modal & Theme Switcher */}
       {settingsOpen && (

@@ -424,3 +424,22 @@ export function IconCameraSwitch({ size = 20, className = '', ...props }) {
     </svg>
   )
 }
+
+export function IconSparkles({ size = 20, className = '', ...props }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 3l1.912 4.913a4 4 0 0 0 2.175 2.175L21 12l-4.913 1.912a4 4 0 0 0-2.175 2.175L12 21l-1.912-4.913a4 4 0 0 0-2.175-2.175L3 12l4.913-1.912a4 4 0 0 0 2.175-2.175L12 3z" />
+      <path d="M19 3v4" />
+      <path d="M21 5h-4" />
+    </svg>
+  )
+}
+
+export function IconLock({ size = 18, className = '', ...props }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+}
